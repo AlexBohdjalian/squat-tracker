@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import Button from '../components/Button';
 import AddGifImage from '../components/ComingSoonGif';
 import { Text, View } from '../components/Themed';
-import { RootTabScreenProps } from '../types';
+import { RootTabScreenProps } from '../../types';
 
 export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
   return (

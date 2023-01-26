@@ -1,16 +1,13 @@
 import axios from 'axios';
 import { StyleSheet } from 'react-native';
 import { View } from '../components/Themed';
-import { RootTabScreenProps } from '../types';
+import { RootTabScreenProps } from '../../types';
 import { Camera, CameraCapturedPicture } from 'expo-camera';
 import { useState, useRef } from 'react';
 import CameraButton from '../components/CameraButton';
 import AndroidCamera from '../components/AndroidCamera';
-import RNPoseEstimator from '../pose_estimation/RNPoseEstimator';
-import Colors from '../constants/Colors';
-import useColorScheme from '../hooks/useColorScheme';
-import BlobPoseDetector from '../pose_estimation/BlobPoseDetection';
-import PoseNetEstimator from '../pose_estimation/PoseNetEstimator';
+import Colors from '../../constants/Colors';
+import useColorScheme from '../../hooks/useColorScheme';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
@@ -34,25 +31,22 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
 
   if (trackingForm) {
     return (
-      // <View style={styles.container}>
-      //   <RNPoseEstimator innerCameraRef={cameraRef} />
-      //   <View style={styles.trackingToggle}>
-      //     <CameraButton
-      //       title={'Stop Tacking'}
-      //       icon="stop"
-      //       color={Colors[scheme].text}
-      //       onPress={() => setTrackingForm(false)}
-      //     />
-      //   </View>
-      // </View>
-      <PoseNetEstimator />
+      <View style={styles.container}>
+        <AndroidCamera innerCameraRef={cameraRef} />
+        <View style={styles.trackingToggle}>
+          <CameraButton
+            title={'Stop Tacking'}
+            icon="stop"
+            color={Colors[scheme].text}
+            onPress={() => setTrackingForm(false)}
+          />
+        </View>
+      </View>
     );
   } else {
     return (
       <View style={styles.container}>
-        <AndroidCamera
-          innerCameraRef={cameraRef}
-        />
+        <AndroidCamera innerCameraRef={cameraRef} />
         <View style={styles.trackingToggle}>
           <CameraButton
             title={'Begin Tracking'}
