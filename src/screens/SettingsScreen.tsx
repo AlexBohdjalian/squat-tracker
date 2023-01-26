@@ -43,19 +43,11 @@ const SettingsBlock = ({ settings }: SettingsBlockProps) => {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginVertical: 10 }}>
         <Text style={styles.title}>{settings.title}</Text>
         <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-        <ScrollView>
-          <FlatList
-            keyExtractor={(item, index) => 'key' + index}
-            data={settings.messages}
-            renderItem={({ item }) => {
-              return (
-                <View style={styles.listItem}>
-                  <Text style={{ textAlign: 'center' }}>{item}</Text>
-                </View>
-              );
-            }}
-          />
-        </ScrollView>
+          {settings.messages.map((message, index) => (
+            <View style={styles.listItem} key={index}>
+              <Text style={{ textAlign: 'center' }}>{message}</Text>
+            </View>
+          ))}
         <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       </View>
     </SafeAreaView>

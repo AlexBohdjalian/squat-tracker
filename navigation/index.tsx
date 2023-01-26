@@ -12,13 +12,13 @@ import { ColorSchemeName, Pressable } from 'react-native';
 
 import Colors from '../constants/Colors';
 import useColorScheme from '../hooks/useColorScheme';
-import AppInfoScreen from '../screens/AppInfoScreen';
-import NotFoundScreen from '../screens/NotFoundScreen';
-import MenuScreen from '../screens/MenuScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import AppInfoScreen from '../src/screens/AppInfoScreen';
+import NotFoundScreen from '../src/screens/NotFoundScreen';
+import MenuScreen from '../src/screens/MenuScreen';
+import SettingsScreen from '../src/screens/SettingsScreen';
 import { RootStackParamList, RootTabParamList, RootTabScreenProps } from '../types';
 import LinkingConfiguration from './LinkingConfiguration';
-import VideoFeedScreen from '../screens/VideoFeedScreen';
+import VideoFeedScreen from '../src/screens/VideoFeedScreen';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (

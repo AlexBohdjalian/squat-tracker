@@ -5,7 +5,7 @@ const AddGifImage = () => {
   return (
     <View style={Styles.container}>
       <Image
-        source={require('../assets/images/oh-no.gif')}
+        source={require('../../assets/oh-no.gif')}
         style={Styles.image}
       />
       <Text>Coming Soon!</Text>
