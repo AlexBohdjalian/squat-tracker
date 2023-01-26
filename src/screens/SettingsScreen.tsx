@@ -1,4 +1,4 @@
-import { FlatList, SafeAreaView, ScrollView, Settings, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
 import { Text, View } from '../components/Themed';
 
 const settings = {
