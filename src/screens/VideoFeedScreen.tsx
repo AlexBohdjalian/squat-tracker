@@ -1,17 +1,15 @@
 // import axios from 'axios';
 import { StyleSheet } from 'react-native';
 import { View } from '../components/Themed';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import CameraButton from '../components/CameraButton';
-import AndroidCamera from '../components/AndroidCamera';
+import LocalCamera from '../components/LocalCamera';
 import Colors from '../../constants/Colors';
 import useColorScheme from '../../hooks/useColorScheme';
-import { Camera } from 'expo-camera';
 import { RootTabScreenProps } from '../../types';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
   const [trackingForm, setTrackingForm] = useState(false);
-  const cameraRef = useRef<Camera|null>(null);
   const scheme = useColorScheme();
 
   // async function sendImage({ image }: { image: CameraCapturedPicture }) {
@@ -31,7 +29,7 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
   if (trackingForm) {
     return (
       <View style={styles.container}>
-        <AndroidCamera innerCameraRef={cameraRef} />
+        <LocalCamera />
         <View style={styles.trackingToggle}>
           <CameraButton
             title={'Stop Tacking'}
@@ -45,7 +43,7 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
   } else {
     return (
       <View style={styles.container}>
-        <AndroidCamera innerCameraRef={cameraRef} />
+        <LocalCamera />
         <View style={styles.trackingToggle}>
           <CameraButton
             title={'Begin Tracking'}

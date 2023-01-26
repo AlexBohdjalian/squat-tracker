@@ -2,40 +2,19 @@ import { Camera, CameraType, FlashMode } from 'expo-camera';
 import CameraButton from './CameraButton';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { Platform } from 'react-native';
+import * as MediaLibrary from 'expo-media-library'
 
-interface AndroidCameraProps {
-  innerCameraRef: React.MutableRefObject<Camera | null>,
-}
-
-export default function AndroidCamera(props: AndroidCameraProps) {
+export default function LocalCamera() {
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [type, setType] = useState(CameraType.back);
   const [flash, setFlash] = useState(FlashMode.off);
-
-  const cameraRef = useRef(props.innerCameraRef as unknown as Camera);
-
-  // on screen  load, ask for permission to use the camera
-  let Permissions: { request: (arg0: string) => PromiseLike<{ status: any; }> | { status: any; }; PERMISSIONS: { CAMERA: any; }; RESULTS: { GRANTED: any; }; };
-  if (Platform.OS === 'android') {
-    Permissions = require('react-native').PermissionsAndroid;
-  } else {
-    Permissions = require('react-native').PermissionIOS;
-  }
+  const cameraRef = useRef(null);
 
   useEffect(() => {
     (async () => {
-      try {
-        if (Platform.OS === 'android') {
-          const granted = await Permissions.request(Permissions.PERMISSIONS.CAMERA);
-          setHasCameraPermission(granted === Permissions.RESULTS.GRANTED);
-        } else {
-          const { status } = await Permissions.request('camera');
-          setHasCameraPermission(status === 'granted');
-        }
-      } catch (err) {
-        console.log('Error requesting camera permission: ', err);
-      }
+      MediaLibrary.requestPermissionsAsync();
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(status === 'granted')
     })();
   }, [])
 
