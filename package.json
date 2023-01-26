@@ -20,6 +20,7 @@
     "expo-linking": "~3.3.0",
     "expo-media-library": "^15.0.0",
     "expo-module-scripts": "^3.0.4",
+    "expo-modules-autolinking": "^1.0.2",
     "expo-splash-screen": "~0.17.5",
     "expo-status-bar": "~1.4.2",
     "expo-system-ui": "~2.0.1",
@@ -34,7 +35,8 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.19.3"
+    "@babel/core": "^7.19.3",
+    "sharp-cli": "^4.1.0"
   },
   "private": true
 }
