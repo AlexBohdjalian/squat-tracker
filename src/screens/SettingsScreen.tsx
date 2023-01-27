@@ -1,30 +1,26 @@
-import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, View } from '../components/Themed';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const settings = {
   displaySettings: {
     title: 'Display Settings',
     messages: [
       "Video recording settings",
-      "Language settings"
+      "Language settings",
     ]
   },
   userPreferencesSettings: {
     title: 'User Settings',
     messages: [
-      "Feedback settings",
-      "Sound settings",
       "Voice guidance settings",
-      "Profile settings",
-      "Notifications settings"
+      "Notifications settings",
     ]
   },
   privacyAndSecuritySettings: {
     title: 'Privacy and Security Settings',
     messages: [
-      "Camera settings",
-      "Privacy settings",
-      "Help and Support settings"
+      "Camera permissions",
     ]
   }
 }
@@ -44,9 +40,14 @@ const SettingsBlock = ({ settings }: SettingsBlockProps) => {
         <Text style={styles.title}>{settings.title}</Text>
         <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
           {settings.messages.map((message, index) => (
-            <View style={styles.listItem} key={index}>
-              <Text style={{ textAlign: 'center' }}>{message}</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.listItem}
+              key={index}
+              onPress={() => console.log(`Setting: '${message}' pressed in '${settings.title}'`)} // make this open modal
+            >
+              <Text style={styles.listItemText}>{message}</Text>
+              <MaterialIcons style={styles.listItemArrow} name="arrow-forward-ios" size={20} color="black" />
+            </TouchableOpacity>
           ))}
         <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       </View>
@@ -87,7 +88,17 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   listItem: {
-    paddingVertical: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 7,
+    width: '80%',
+  },
+  listItemText: {
+    textAlign: 'left',
+    fontSize: 20,
+  },
+  listItemArrow: {
+    paddingTop: 5,
   },
   buttonsContainer: {
     marginVertical: 10,

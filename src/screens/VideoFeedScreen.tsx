@@ -7,6 +7,8 @@ import LocalCamera from '../components/LocalCamera';
 import Colors from '../../constants/Colors';
 import useColorScheme from '../../hooks/useColorScheme';
 import { RootTabScreenProps } from '../../types';
+// import * as HandDetector from '../../pose_estimation/HandDetection';
+import PoseDetector from '../../pose_estimation/PoseNetDetector';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
   const [trackingForm, setTrackingForm] = useState(false);
@@ -29,7 +31,8 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
   if (trackingForm) {
     return (
       <View style={styles.container}>
-        <LocalCamera />
+        {/* <LocalCamera /> */}
+        <PoseDetector />
         <View style={styles.trackingToggle}>
           <CameraButton
             title={'Stop Tacking'}
