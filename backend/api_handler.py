@@ -52,7 +52,6 @@ def listen_for_data():
             # Process the data
             key_points_pred = pose_detector.make_prediction(image)
             client_socket.send(pickle.dumps(key_points_pred))
-            
 
 
             # success, image_data = cv2.imencode('.jpg', output)

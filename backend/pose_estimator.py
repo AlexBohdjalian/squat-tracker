@@ -13,28 +13,6 @@ import tensorflow as tf
 
 class PoseNetDetector:
     def __init__(self, p_model_index=0):
-        self.EDGES = {
-            (0, 1): 'm',
-            (0, 2): 'c',
-            (1, 3): 'm',
-            (2, 4): 'c',
-            (0, 5): 'm',
-            (0, 6): 'c',
-            (5, 7): 'm',
-            (7, 9): 'm',
-            (6, 8): 'c',
-            (8, 10): 'c',
-            (5, 6): 'y',
-            (5, 11): 'm',
-            (6, 12): 'c',
-            (11, 12): 'y',
-            (11, 13): 'm',
-            (13, 15): 'm',
-            (12, 14): 'c',
-            (14, 16): 'c'
-        }
-        self.confidence_threshold = 0.4
-
         models = [
             "backend/assets/lite-model_movenet_singlepose_lightning_3.tflite",
             "backend/assets/lite-model_movenet_singlepose_thunder_tflite_float16_4.tflite",
@@ -79,8 +57,6 @@ class PoseNetDetector:
 
 
     def make_prediction(self, p_image):
-        # frame = cv2.imdecode(np.frombuffer(p_image, np.uint8), cv2.IMREAD_COLOR)
-        # cv2.imshow("dfsdf",frame)
         frame = p_image
 
         # Reshape image
@@ -97,7 +73,9 @@ class PoseNetDetector:
         key_points_with_scores = self.interpreter.get_tensor(self.output_details[0]['index'])
 
         # Rendering
-        self.draw_connections(frame, key_points_with_scores)
-        self.draw_key_points(frame, key_points_with_scores)
+        # self.draw_connections(frame, key_points_with_scores)
+        # self.draw_key_points(frame, key_points_with_scores)
 
-        return frame
+        # return frame
+
+        return key_points_with_scores
