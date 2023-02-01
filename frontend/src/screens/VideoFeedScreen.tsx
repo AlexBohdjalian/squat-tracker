@@ -8,31 +8,17 @@ import Colors from '../../constants/Colors';
 import useColorScheme from '../../hooks/useColorScheme';
 import { RootTabScreenProps } from '../../types';
 // import * as HandDetector from '../../pose_estimation/HandDetection';
-import PoseDetector from '../../pose_estimation/PoseNetDetector';
+// import PoseDetector from '../../pose_estimation/PoseNetDetector';
+import PoseCamera from '../components/PoseCamera';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
   const [trackingForm, setTrackingForm] = useState(false);
   const scheme = useColorScheme();
 
-  // async function sendImage({ image }: { image: CameraCapturedPicture }) {
-  //   const data = new FormData();
-
-  //   data.append('file', JSON.stringify({ uri: image.uri, name: 'anyname.jpg', type: 'image/jpg' }));
-
-  //   const response = await axios.post('URL', data);
-
-  //   const { id, url } = response.data;
-
-  //   // create a component which displays takes an image,
-  //   // sends it using this,
-  //   // then displays the response
-  // }
-
   if (trackingForm) {
     return (
       <View style={styles.container}>
-        {/* <LocalCamera /> */}
-        <PoseDetector />
+        <PoseCamera />
         <View style={styles.trackingToggle}>
           <CameraButton
             title={'Stop Tacking'}

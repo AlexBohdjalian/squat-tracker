@@ -12,7 +12,7 @@ export default function LocalCamera() {
 
   useEffect(() => {
     (async () => {
-      MediaLibrary.requestPermissionsAsync();
+      // MediaLibrary.requestPermissionsAsync();
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasCameraPermission(status === 'granted')
     })();
