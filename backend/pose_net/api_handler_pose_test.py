@@ -1,11 +1,12 @@
 import pickle
 import socket
+from typing import Tuple
 import cv2
 import numpy as np
 import struct
 
 
-def convert_data_to_cv2image(image_data, willSave):
+def convert_data_to_cv2image(image_data, willSave=False):
     nparr = np.frombuffer(image_data, np.uint8)
     open_cv_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
@@ -13,6 +14,21 @@ def convert_data_to_cv2image(image_data, willSave):
         cv2.imwrite("backend/assets/processedImage.jpg", open_cv_img)
 
     return open_cv_img
+
+
+def resize_with_pad(image: np.array, 
+                    new_shape: Tuple[int, int], 
+                    padding_color: Tuple[int] = (255, 255, 255)) -> np.array:
+    original_shape = (image.shape[1], image.shape[0])
+    ratio = float(max(new_shape))/max(original_shape)
+    new_size = tuple([int(x*ratio) for x in original_shape])
+    image = cv2.resize(image, new_size)
+    delta_w = new_shape[0] - new_size[0]
+    delta_h = new_shape[1] - new_size[1]
+    top, bottom = delta_h//2, delta_h-(delta_h//2)
+    left, right = delta_w//2, delta_w-(delta_w//2)
+    image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color)
+    return image
 
 
 def send_image(image_path):
@@ -26,8 +42,10 @@ def send_image(image_path):
     # Connect to the server
     client_socket.connect(("localhost", 8888))
 
-    # Send the image data to the server
-    client_socket.sendall(image_data)
+    # Send and receive the data
+    print(f'Sending 1 frames...')
+    client_socket.sendall(struct.pack("!i", 1))
+    client_socket.sendall(image_data)  # use resize
 
     # Receive the output from the server
     output = client_socket.recv(1000000)
@@ -58,7 +76,8 @@ def send_video(video_path):
         ret, frame = video.read()
         if not ret:
             break
-        _, img_encoded = cv2.imencode('.jpg', frame)
+        resized_frame = frame
+        _, img_encoded = cv2.imencode('.jpg', resized_frame)
         client_socket.sendall(img_encoded.tobytes())
 
         data = client_socket.recv(1000)
@@ -68,8 +87,7 @@ def send_video(video_path):
         draw_connections(frame, key_point_pred, 0.4, EDGES)
 
         cv2.imshow("Processed frame", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        cv2.waitKey(1)
 
         frames.append(frame)
 
@@ -79,9 +97,9 @@ def send_video(video_path):
     client_socket.close()
     video.release()
 
-    for frame in frames:
-        cv2.imshow("frame", frame)
-        cv2.waitKey(10) # doesn't account for frame rate too well
+    # for frame in frames:
+    #     cv2.imshow("frame", frame)
+    #     cv2.waitKey(10) # doesn't account for frame rate too well
 
 
 def draw_key_points(p_frame, key_points, confidence_threshold):
@@ -112,8 +130,6 @@ if __name__ == '__main__':
     image_path = "backend/assets/pose_test_image.png"
     video_path = "backend/assets/pose_test_video.mp4"
     squat_video_path = "backend/assets/squat_test_video.mp4"
-    # send_image(image_path)
-    # send_video(video_path)
     EDGES = {
         (0, 1): 'm',
         (0, 2): 'c',
@@ -134,4 +150,7 @@ if __name__ == '__main__':
         (12, 14): 'c',
         (14, 16): 'c'
     }
-    send_video(squat_video_path)
+    # send_image(image_path)
+    send_video(video_path)
+    # send_video(squat_video_path)
+    

@@ -55,8 +55,8 @@ EDGES = {
 
 # consider using thunder and lowering the framerate
 models = [
-    r"backend\assets\lite-model_movenet_singlepose_lightning_3.tflite",
-    r"backend\assets\lite-model_movenet_singlepose_thunder_tflite_float16_4.tflite",
+    "backend/assets/lite-model_movenet_singlepose_lightning_3.tflite",
+    "backend/assets/lite-model_movenet_singlepose_thunder_tflite_float16_4.tflite",
 ]
 model_path = models[0]
 if 'thunder' in model_path:

@@ -4,11 +4,14 @@ import numpy as np
 import cv2
 import struct
 import pickle
+import time
 
 
 def convert_data_to_cv2image(image_data):
     nparr = np.frombuffer(image_data, np.uint8)
-    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    cv2_image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    return cv2_image
 
 
 def listen_for_data():
@@ -33,6 +36,7 @@ def listen_for_data():
             continue
 
         print('Connection accepted...')
+        start_time = time.time()
 
         # Receive the number of frames
         num_frames_bytes = client_socket.recv(4)
@@ -41,32 +45,21 @@ def listen_for_data():
             print('Video feed detected. Limiting to 10000 frames...')
             num_frames = 10000
 
-        # print(f'Receiving {num_frames} frames...')
-
         for i in range(num_frames):
             # Receive data from the client
             data = client_socket.recv(1000000)
             image = convert_data_to_cv2image(data)
             print(f'Received {i + 1}/{num_frames} frames...', end='\r')
 
-            # Process the data
-            key_points_pred = pose_detector.make_prediction(image)
-            client_socket.send(pickle.dumps(key_points_pred))
-
-
-            # success, image_data = cv2.imencode('.jpg', output)
-
-            # if success:
-                # Send the output back to the client
-            #     client_socket.send(image_data.tobytes())
-            # else:
-            #     raise ValueError('Error encoding image')
+            # Process then send the data
+            results = pose_detector.make_prediction(image)
+            client_socket.send(pickle.dumps(results))
 
         # Close the connection with the client
-        print('Done. Listening...')
+        print(f"\nDone in {round(time.time() - start_time, 3)}.")
         client_socket.close()
 
 
 if __name__ == '__main__':
-    pose_detector = PoseNetDetector(1)
+    pose_detector = PoseNetDetector(0)
     listen_for_data()
