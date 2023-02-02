@@ -17,9 +17,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
         <Button
           onPress={() => {}} // TODO: this
           title={'See Previous Lifts'}
-        >
-          <AddGifImage />
-        </Button>
+        />
       </View>
     </View>
   );
