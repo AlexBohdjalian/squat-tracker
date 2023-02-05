@@ -12,6 +12,7 @@ web-build/
 *.log
 __pycache__/
 *.py[cod]
+*_processed.mp4
 
 # macOS
 .DS_Store

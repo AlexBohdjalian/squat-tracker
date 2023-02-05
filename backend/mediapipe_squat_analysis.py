@@ -68,7 +68,9 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     results_stack = []
     last_squat_details = ['Unsure', '', '' , '']
     rep_count = 0
-    in_squat = False
+    squat_start_time = 0
+    squat_end_time = 0
+    initiated_squat = False
     while True:
         # Get the frame
         t0 = time.time()
@@ -86,11 +88,17 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             squat_details = form_analyser.analyse_landmark_stack(results_stack)
             last_squat_details = squat_details
             results_stack = []
-            if not in_squat and squat_details[0] == 'Bottom':
-                in_squat = True
-            elif in_squat and squat_details[0] == 'Standing':
-                in_squat = False
+
+            if not initiated_squat and squat_details[0] == 'Descending':
+                initiated_squat = True
+                squat_start_time = time.time() - start_time
+                if squat_end_time == 0:
+                    squat_end_time = time.time() - start_time
+            elif initiated_squat and squat_details[0] == 'Standing':
+                initiated_squat = False
                 rep_count += 1
+                squat_end_time = time.time() - start_time
+
         else:
             if pose_landmarks == None:
                 results_stack = []
@@ -119,8 +127,11 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             display_angle_at_joint(frame, knee, squat_details[2])
             display_angle_at_joint(frame, hip, squat_details[3])
 
+        if squat_end_time >= squat_start_time:
+            squat_duration = round(squat_end_time - squat_start_time, 2)
         draw_text(frame, squat_details[0], font_scale=4)
         draw_text(frame, 'Repetitions: ' + str(rep_count), pos=(0, 40))
+        draw_text(frame, 'Duration: ' + str(squat_duration) + 's', pos=(0, 70))
         if show_output:
             # Make the frame rate stick to the fps by waiting
             elapsed_time = time.time() - t0
@@ -132,7 +143,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
 
-            draw_text(frame, 'FPS: ' + str(round(1 / (time.time() - t0+1e-6), 1)), pos=(0, 70))
+            draw_text(frame, 'FPS: ' + str(round(1 / (time.time() - t0+1e-6), 1)), pos=(0, 100))
             cv2.imshow('MediaPipe Pose', cv2.resize(frame, dim, cv2.INTER_AREA))
 
 
@@ -183,4 +194,4 @@ if __name__ == '__main__':
     # videos.append(0)
 
     for video_path in videos:
-        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=True)
+        process_data(video_path, frame_stack, frame_skip, show_output=True, save_video=True)
