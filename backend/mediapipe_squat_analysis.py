@@ -73,14 +73,14 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     initiated_squat = False
     while True:
         # Get the frame
-        t0 = time.time()
+        frame_start_time = time.time()
         success, frame = cap.read()
         if not success:
             break
 
         # Process then send the data
         # TODO: figure out if actually use rescale
-        frame = frame # rescale_frame(frame)
+        # frame = rescale_frame(frame)
         pose_landmarks = pose_detector.make_prediction(frame)
 
         if len(results_stack) > 0 \
@@ -104,6 +104,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
                 results_stack = []
             else:
                 if len(frames) % (frame_skip + 1) == 0:
+                    # look into making this only stack what is needed (efficiency)
                     results_stack.append(pose_landmarks)
             squat_details = last_squat_details
 
@@ -134,7 +135,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
         draw_text(frame, 'Duration: ' + str(squat_duration) + 's', pos=(0, 70))
         if show_output:
             # Make the frame rate stick to the fps by waiting
-            elapsed_time = time.time() - t0
+            elapsed_time = time.time() - frame_start_time
             wait_time = round((1 / fps) - elapsed_time)
 
             if wait_time <= 0:
@@ -143,7 +144,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
 
-            draw_text(frame, 'FPS: ' + str(round(1 / (time.time() - t0+1e-6), 1)), pos=(0, 100))
+            draw_text(frame, 'FPS: ' + str(round(1 / (time.time() - frame_start_time + 1e-6), 1)), pos=(0, 100))
             cv2.imshow('MediaPipe Pose', cv2.resize(frame, dim, cv2.INTER_AREA))
 
 
@@ -178,8 +179,8 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
 if __name__ == '__main__':
     pose_detector = MediaPipeDetector()
     form_analyser = SquatFormAnalyzer()
-    frame_stack = 4
-    frame_skip = 0
+    frame_stack = 2 # min 2
+    frame_skip = 3
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_pose = mp.solutions.pose
@@ -194,4 +195,4 @@ if __name__ == '__main__':
     # videos.append(0)
 
     for video_path in videos:
-        process_data(video_path, frame_stack, frame_skip, show_output=True, save_video=True)
+        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=False)
