@@ -148,7 +148,12 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
         # If the output is being shown in real-time, enforce desired fps and calculate actual fps
         if show_output:
             # Calculate the time to wait to reach desired fps (happens if image is processed to fast)
-            elapsed_time = time.time() - frame_start_time
+            frame_end_time = time.time()
+            elapsed_time = frame_end_time - frame_start_time
+
+            if elapsed_time == 0:
+                elapsed_time = 1e-6
+
             wait_time = round((1 / fps) - elapsed_time)
             if wait_time <= 0:
                 wait_time = 1
@@ -156,11 +161,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
 
-            # Calculate actual fps and protect against zero division
-            frame_end_time = time.time()
-            if frame_end_time == frame_start_time:
-                frame_end_time += 1e-6
-            actual_fps = round(1 / (time.time() - frame_start_time), 1)
+            actual_fps = round(1 / elapsed_time, 1)
 
             # Display final output
             draw_text(frame, 'FPS: ' + str(actual_fps), pos=(0, 100))
@@ -206,11 +207,12 @@ if __name__ == '__main__':
     videos = []
     # comment unwanted
     # videos.append("backend/assets/person_walking.mp4")
-    videos.append("backend/assets/barbell_back_squat.mp4")
-    videos.append("backend/assets/barbell_front_squat.mp4")
-    videos.append("backend/assets/dumbbell_goblet_squat.mp4")
+    # videos.append("backend/assets/barbell_back_squat.mp4")
+    # videos.append("backend/assets/barbell_front_squat.mp4")
+    # videos.append("backend/assets/dumbbell_goblet_squat.mp4")
     # videos.append("backend/assets/dan_squat.mp4")
+    videos.append("backend/assets/me_squat.mp4")
     # videos.append(0)
 
     for video_path in videos:
-        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=True)
+        process_data(video_path, frame_stack, frame_skip, show_output=True, save_video=True)
