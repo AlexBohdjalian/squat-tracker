@@ -14,6 +14,7 @@ def draw_text(img, text,
           text_color=(0, 255, 0),
           text_color_bg=(0, 0, 0)
           ):
+    """ Draws text on a cv2 image in a given spot with a background """
     x, y = pos
     text_size, _ = cv2.getTextSize(text, font, font_scale, font_thickness)
     text_w, text_h = text_size
@@ -24,6 +25,7 @@ def draw_text(img, text,
 
 
 def get_aspect_dim(image_dim, width, height):
+    """ Gets the dimension to resize a frame to while maintaining aspect ratio """
     (h, w) = image_dim
 
     if width is None:
@@ -52,39 +54,43 @@ def display_angle_at_joint(frame, joint, angle):
 def process_data(video_source, frame_stack, frame_skip, show_output, save_video):
     print(f'Beginning "{video_source}" ...')
 
+    # Get video capture and constants (organize these)
     cap = cv2.VideoCapture(video_source)
     fps = cap.get(cv2.CAP_PROP_FPS)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
     start_time = time.time()
+    frame_width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    frame_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
     
-    print(f'Total Video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
-
+    # Window dimensions
     window_width = None
     window_height = 500
-    width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    dim = get_aspect_dim((height, width), window_width, window_height)
+    dim = get_aspect_dim((frame_height, frame_width), window_width, window_height)
+
+    # Output video information
+    print(f'Total Video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
+
+    # Initiate variables
     frames = []
     results_stack = []
-    last_squat_details = ['Unsure', '', '' , '']
     rep_count = 0
     squat_start_time = 0
     squat_end_time = 0
     initiated_squat = False
+    last_squat_details = ['Unsure', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
+
+    # Begin loop
     while True:
         # Get the frame
-        frame_start_time = time.time()
         success, frame = cap.read()
         if not success:
             break
+        frame_start_time = time.time()
 
-        # Process then send the data
-        # TODO: figure out if actually use rescale
-        # frame = rescale_frame(frame)
+        # Process then send the data (consider using rescale_frame())
         pose_landmarks = pose_detector.make_prediction(frame)
 
-        if len(results_stack) > 0 \
-            and len(results_stack) % frame_stack == 0:
+        if len(results_stack) > 0 and len(results_stack) % frame_stack == 0:
             squat_details = form_analyser.analyse_landmark_stack(results_stack)
             last_squat_details = squat_details
             results_stack = []
@@ -98,8 +104,8 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
                 initiated_squat = False
                 rep_count += 1
                 squat_end_time = time.time() - start_time
-
         else:
+            # Update results stack
             if pose_landmarks == None:
                 results_stack = []
             else:
@@ -108,16 +114,18 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
                     results_stack.append(pose_landmarks)
             squat_details = last_squat_details
 
-        # Draw the pose annotation on the image.
+        # Draw the pose annotation
         frame.flags.writeable = True
         mp_drawing.draw_landmarks(
             frame,
             pose_landmarks,
             mp_pose.POSE_CONNECTIONS,
-            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
+            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+        )
         
-        # Get coordinates
+        # Draw angles next to joints
         if pose_landmarks is not None:
+            # TODO: change everywhere to just use native landmark structure (instead of converting)
             hip, knee, ankle = [[
                 pose_landmarks.landmark[landmark_index].x,
                 pose_landmarks.landmark[landmark_index].y,
@@ -128,23 +136,34 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             display_angle_at_joint(frame, knee, squat_details[2])
             display_angle_at_joint(frame, hip, squat_details[3])
 
-        if squat_end_time >= squat_start_time:
-            squat_duration = round(squat_end_time - squat_start_time, 2)
+        # Draw squat stage and repetitions
         draw_text(frame, squat_details[0], font_scale=4)
         draw_text(frame, 'Repetitions: ' + str(rep_count), pos=(0, 40))
+
+        # Calculate and draw the rep duration
+        if squat_end_time >= squat_start_time:
+            squat_duration = round(squat_end_time - squat_start_time, 2)
         draw_text(frame, 'Duration: ' + str(squat_duration) + 's', pos=(0, 70))
+
+        # If the output is being shown in real-time, enforce desired fps and calculate actual fps
         if show_output:
-            # Make the frame rate stick to the fps by waiting
+            # Calculate the time to wait to reach desired fps (happens if image is processed to fast)
             elapsed_time = time.time() - frame_start_time
             wait_time = round((1 / fps) - elapsed_time)
-
             if wait_time <= 0:
                 wait_time = 1
 
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
 
-            draw_text(frame, 'FPS: ' + str(round(1 / (time.time() - frame_start_time + 1e-6), 1)), pos=(0, 100))
+            # Calculate actual fps and protect against zero division
+            frame_end_time = time.time()
+            if frame_end_time == frame_start_time:
+                frame_end_time += 1e-6
+            actual_fps = round(1 / (time.time() - frame_start_time), 1)
+
+            # Display final output
+            draw_text(frame, 'FPS: ' + str(actual_fps), pos=(0, 100))
             cv2.imshow('MediaPipe Pose', cv2.resize(frame, dim, cv2.INTER_AREA))
 
 
@@ -154,7 +173,6 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     cv2.destroyAllWindows()
 
     processed_time = time.time()
-
     print(f'Video was processed in: {time.strftime("%Mm %Ss", time.gmtime(round(processed_time - start_time, 3)))}')
 
     if save_video:
@@ -179,7 +197,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
 if __name__ == '__main__':
     pose_detector = MediaPipeDetector()
     form_analyser = SquatFormAnalyzer()
-    frame_stack = 2 # min 2
+    frame_stack = 2 # min 2 (for now, start and end frame is only used so this is best as 2)
     frame_skip = 3
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
@@ -195,4 +213,4 @@ if __name__ == '__main__':
     # videos.append(0)
 
     for video_path in videos:
-        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=False)
+        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=True)
