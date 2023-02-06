@@ -3,15 +3,14 @@ import mediapipe as mp
 
 
 class MediaPipeDetector:
-    def __init__(self):
-        # self.mp_pose = mp.solutions.pose
+    def __init__(self, min_detection_confidence=0.5, min_tracking_confidence=0.5):
         self.pose = mp.solutions.pose.Pose(
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5)
+            min_detection_confidence=min_detection_confidence,
+            min_tracking_confidence=min_tracking_confidence
+        )
 
 
     def make_prediction(self, image):
-        # To improve performance, mark the image as not writeable.
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image.flags.writeable = False
         results = self.pose.process(image)

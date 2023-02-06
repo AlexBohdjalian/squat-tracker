@@ -77,42 +77,35 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     squat_start_time = 0
     squat_end_time = 0
     initiated_squat = False
-    last_squat_details = ['Unsure', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
+    squat_details = ['Unsure', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
 
     # Begin loop
     while True:
         # Get the frame
+        frame_start_time = time.time()
         success, frame = cap.read()
         if not success:
             break
-        frame_start_time = time.time()
 
-        # Process then send the data (consider using rescale_frame())
+        # Process then send the data
         pose_landmarks = pose_detector.make_prediction(frame)
 
         if len(results_stack) > 0 and len(results_stack) % frame_stack == 0:
             squat_details = form_analyser.analyse_landmark_stack(results_stack)
-            last_squat_details = squat_details
             results_stack = []
 
             if not initiated_squat and squat_details[0] == 'Descending':
                 initiated_squat = True
-                squat_start_time = time.time() - start_time
-                if squat_end_time == 0:
-                    squat_end_time = time.time() - start_time
+                squat_start_time = time.time()
             elif initiated_squat and squat_details[0] == 'Standing':
                 initiated_squat = False
+                squat_end_time = time.time()
                 rep_count += 1
-                squat_end_time = time.time() - start_time
-        else:
-            # Update results stack
-            if pose_landmarks == None:
-                results_stack = []
-            else:
-                if len(frames) % (frame_skip + 1) == 0:
-                    # look into making this only stack what is needed (efficiency)
-                    results_stack.append(pose_landmarks)
-            squat_details = last_squat_details
+
+        if pose_landmarks is None:
+            results_stack = []
+        elif len(frames) % (frame_skip + 1) == 0:
+            results_stack.append(pose_landmarks)
 
         # Draw the pose annotation
         frame.flags.writeable = True
@@ -132,6 +125,12 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
                 pose_landmarks.landmark[landmark_index].visibility
             ] for landmark_index in [form_analyser.landmark_names[i] for i in ['right_ankle', 'right_knee', 'right_hip']]]
 
+            # if lefts are undetected, use rights (do the same for squat_check)
+            # display message?
+            # or, take average of both?
+            # have a think
+            # if it's is disclaimed that one side must always be visible, then that's fine
+
             display_angle_at_joint(frame, ankle, squat_details[1])
             display_angle_at_joint(frame, knee, squat_details[2])
             display_angle_at_joint(frame, hip, squat_details[3])
@@ -147,26 +146,20 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
 
         # If the output is being shown in real-time, enforce desired fps and calculate actual fps
         if show_output:
-            # Calculate the time to wait to reach desired fps (happens if image is processed to fast)
-            frame_end_time = time.time()
-            elapsed_time = frame_end_time - frame_start_time
+            elapsed_time = time.time() - frame_start_time
+            wait_time = int(1000/fps - elapsed_time)
+            wait_time -= 30 # account for system delay
 
-            if elapsed_time == 0:
-                elapsed_time = 1e-6
-
-            wait_time = round((1 / fps) - elapsed_time)
             if wait_time <= 0:
                 wait_time = 1
 
+            actual_fps = round(1 / (elapsed_time + (wait_time / 1000)), 1)
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
-
-            actual_fps = round(1 / elapsed_time, 1)
 
             # Display final output
             draw_text(frame, 'FPS: ' + str(actual_fps), pos=(0, 100))
             cv2.imshow('MediaPipe Pose', cv2.resize(frame, dim, cv2.INTER_AREA))
-
 
         frames.append(frame)
 
@@ -207,12 +200,13 @@ if __name__ == '__main__':
     videos = []
     # comment unwanted
     # videos.append("backend/assets/person_walking.mp4")
-    # videos.append("backend/assets/barbell_back_squat.mp4")
-    # videos.append("backend/assets/barbell_front_squat.mp4")
-    # videos.append("backend/assets/dumbbell_goblet_squat.mp4")
+    videos.append("backend/assets/barbell_back_squat.mp4")
+    videos.append("backend/assets/barbell_front_squat.mp4")
+    videos.append("backend/assets/dumbbell_goblet_squat.mp4")
     # videos.append("backend/assets/dan_squat.mp4")
-    videos.append("backend/assets/me_squat.mp4")
+    # videos.append("backend/assets/me_squat.mp4")
     # videos.append(0)
 
     for video_path in videos:
-        process_data(video_path, frame_stack, frame_skip, show_output=True, save_video=True)
+        # ensure that video is ~720x1280 @ 30fps for best results
+        process_data(video_path, frame_stack, frame_skip, show_output=True, save_video=False)
