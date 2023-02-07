@@ -92,18 +92,11 @@ class SquatFormAnalyzer():
 
 
     def analyse_landmark_stack(self, pose_landmarks_stack):
-
-        # Re-evaluate this. ascending/descending only possible if stage == unsure
-        # Psuedo:
-        # determine if ascending or descending, based on joint heights (with threshold)
-        # if not ascending or descending, then determine if standing or bottom
-        
-
         # this needs to vary with frame skip/stack
-        moving_threshold = 0.5 # adjust this and move to __init__
+        moving_threshold = 0.5 # move to __init__
         start_head_height = self.get_landmarks(pose_landmarks_stack[0], ['nose'])[0][1]
         end_head_height = self.get_landmarks(pose_landmarks_stack[-1], ['nose'])[0][1]
-        squat_details = self.determine_squat_stage(pose_landmarks_stack[-1], True)
+        squat_details = self.determine_squat_stage(pose_landmarks_stack[-1])
 
         if squat_details[0] == 'Unsure':
             if abs(end_head_height - start_head_height) <= moving_threshold:
@@ -114,49 +107,53 @@ class SquatFormAnalyzer():
                 else:
                     squat_details[0] = 'Ascending'
 
-
-        # start_hip_height = self.get_landmarks(pose_landmarks_stack[-1], ['right_hip'])[0][1]
-        # end_hip_height = self.get_landmarks(pose_landmarks_stack[0], ['right_hip'])[0][1]
-        # squat_details = self.determine_squat_stage(pose_landmarks_stack[-1], True)
-
-        # if squat_details[0] == 'Unsure':
-        #     moving_threshold = 0.1
-        #     if abs(end_hip_height - start_hip_height) <= moving_threshold:
-        #         if end_hip_height > start_hip_height:
-        #             squat_details[0] = 'Ascending'
-        #         else:
-        #             squat_details[0] = 'Descending'
-
         return squat_details
 
 
-    def determine_squat_stage(self, pose_landmarks, get_angles=False):
+    def determine_squat_stage(self, pose_landmarks):
         if pose_landmarks == None:
             return ['Undetected', '', '', '']
-
-        # For now, this assumes visually symmetrical squat        
-        # Extract the hip, knee and ankle joints
-        shoulder, hip, knee, ankle, toe = self.get_landmarks(
+        
+        # Extract joints from both sides
+        right_joints = self.get_landmarks(
             pose_landmarks,
             ['right_shoulder', 'right_hip', 'right_knee', 'right_ankle', 'right_foot_index']
         )
+        left_joints = self.get_landmarks(
+            pose_landmarks,
+            ['left_shoulder', 'left_hip', 'left_knee', 'left_ankle', 'left_foot_index']
+        )
 
-        if get_angles:
-            joints = [toe, ankle, knee]
-            toe_ankle_knee = None
-            if self.check_confidence(self.min_confidence_threshold, joints):
-                toe_ankle_knee = self.calc_angle(joints)
+        right_visibility = 0
+        left_visibility = 0
+        best_side = ''
+        for right_joint, left_joint in zip(right_joints, left_joints):
+            right_visibility += right_joint[3]
+            left_visibility += left_joint[3]
+
+        if right_visibility < left_visibility:
+            most_visible_joints = left_joints
+            best_side = 'left_'
+        else:
+            most_visible_joints = right_joints
+            best_side = 'right_'
+
+        shoulder, hip, knee, ankle, toe = most_visible_joints
+
+        joints = [toe, ankle, knee]
+        toe_ankle_knee = None
+        if self.check_confidence(self.min_confidence_threshold, joints):
+            toe_ankle_knee = self.calc_angle(joints)
 
         joints = [ankle, knee, hip]
         ankle_knee_hip = None
         if self.check_confidence(self.min_confidence_threshold, joints):
             ankle_knee_hip = self.calc_angle(joints)
 
-        if get_angles:
-            joints = [knee, hip, shoulder]
-            knee_hip_shoulder = None
-            if self.check_confidence(self.min_confidence_threshold, joints):
-                knee_hip_shoulder = self.calc_angle(joints)
+        joints = [knee, hip, shoulder]
+        knee_hip_shoulder = None
+        if self.check_confidence(self.min_confidence_threshold, joints):
+            knee_hip_shoulder = self.calc_angle(joints)
 
         # Move this to __init__
         standing_threshold = 5
@@ -179,15 +176,14 @@ class SquatFormAnalyzer():
                 stage = 'Standing'
             elif ankle_knee_hip <= squatting_angle + squatting_threshold:
                 stage = 'Bottom'
-        
-        if get_angles:
-            return [
-                stage,
-                '' if toe_ankle_knee == None else round(toe_ankle_knee),
-                '' if ankle_knee_hip == None else round(ankle_knee_hip),
-                '' if knee_hip_shoulder == None else round(knee_hip_shoulder)
-            ]
-        else: return [stage, '', '', '']
+
+        return [
+            stage,
+            '' if toe_ankle_knee == None else round(toe_ankle_knee),
+            '' if ankle_knee_hip == None else round(ankle_knee_hip),
+            '' if knee_hip_shoulder == None else round(knee_hip_shoulder),
+            best_side
+        ]
 
 
     def evaluate_form():

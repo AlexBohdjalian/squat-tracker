@@ -46,9 +46,13 @@ def rescale_frame(frame, percent=50):
 
 
 def display_angle_at_joint(frame, joint, angle):
-    if joint[2] > 0.5:
-        joint_pos = joint[:2]
-        draw_text(frame, str(angle) + ' deg', pos=tuple(np.multiply(joint_pos, frame.shape[:2][::-1]).astype(int)))
+    if joint.visibility > 0.5:
+        joint_pos = [joint.x, joint.y]
+        draw_text(
+            frame,
+            str(angle) + ' deg',
+            pos=tuple(np.multiply(joint_pos, frame.shape[:2][::-1]).astype(int))
+        )
 
 
 def process_data(video_source, frame_stack, frame_skip, show_output, save_video):
@@ -68,7 +72,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     dim = get_aspect_dim((frame_height, frame_width), window_width, window_height)
 
     # Output video information
-    print(f'Total Video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
+    print(f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
 
     # Initiate variables
     frames = []
@@ -77,7 +81,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     squat_start_time = 0
     squat_end_time = 0
     initiated_squat = False
-    squat_details = ['Unsure', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
+    squat_details = ['Unsure', '', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
 
     # Begin loop
     while True:
@@ -117,19 +121,15 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
         )
         
         # Draw angles next to joints
-        if pose_landmarks is not None:
-            # TODO: change everywhere to just use native landmark structure (instead of converting)
-            hip, knee, ankle = [[
-                pose_landmarks.landmark[landmark_index].x,
-                pose_landmarks.landmark[landmark_index].y,
-                pose_landmarks.landmark[landmark_index].visibility
-            ] for landmark_index in [form_analyser.landmark_names[i] for i in ['right_ankle', 'right_knee', 'right_hip']]]
+        if pose_landmarks is not None and squat_details[4] != '':
+            most_visible_hip_index = form_analyser.landmark_names[squat_details[4] + 'hip']
+            hip = pose_landmarks.landmark[most_visible_hip_index]
 
-            # if lefts are undetected, use rights (do the same for squat_check)
-            # display message?
-            # or, take average of both?
-            # have a think
-            # if it's is disclaimed that one side must always be visible, then that's fine
+            most_visible_knee_index = form_analyser.landmark_names[squat_details[4] + 'knee']
+            knee = pose_landmarks.landmark[most_visible_knee_index]
+
+            most_visible_ankle_index = form_analyser.landmark_names[squat_details[4] + 'ankle']
+            ankle = pose_landmarks.landmark[most_visible_ankle_index]
 
             display_angle_at_joint(frame, ankle, squat_details[1])
             display_angle_at_joint(frame, knee, squat_details[2])
@@ -148,12 +148,12 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
         if show_output:
             elapsed_time = time.time() - frame_start_time
             wait_time = int(1000/fps - elapsed_time)
-            wait_time -= 30 # account for system delay
+            wait_time -= 35 # account for system delay
 
             if wait_time <= 0:
                 wait_time = 1
 
-            actual_fps = round(1 / (elapsed_time + (wait_time / 1000)), 1)
+            actual_fps = int(1 / (elapsed_time + wait_time/1000))
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
 
@@ -203,10 +203,10 @@ if __name__ == '__main__':
     videos.append("backend/assets/barbell_back_squat.mp4")
     videos.append("backend/assets/barbell_front_squat.mp4")
     videos.append("backend/assets/dumbbell_goblet_squat.mp4")
-    # videos.append("backend/assets/dan_squat.mp4")
-    # videos.append("backend/assets/me_squat.mp4")
+    videos.append("backend/assets/dan_squat.mp4")
+    videos.append("backend/assets/me_squat.mp4")
     # videos.append(0)
 
     for video_path in videos:
         # ensure that video is ~720x1280 @ 30fps for best results
-        process_data(video_path, frame_stack, frame_skip, show_output=True, save_video=False)
+        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=True)
