@@ -42,7 +42,7 @@ class SquatFormAnalyzer():
         
 
 
-    def calc_angle(sefl, joints):
+    def calc_angle(self, joints):
         point1, point2, point3 = joints
         radians = np.arctan2(point3[1]-point2[1], point3[0]-point2[0]) \
                 - np.arctan2(point1[1]-point2[1], point1[0]-point2[0])
@@ -186,15 +186,15 @@ class SquatFormAnalyzer():
         ]
 
 
-    def evaluate_form():
-        print()
-        # angle of hip-ankle line should be close to perpendicular with floor
-        # angle of knee-ankle line should be close to perpendicular with floor
-        # should ideally be stacking multiple frames (markov property)
-            # use a function that is called on first frames (24) only to determine mean head height
-                # using mean head height and foot height we have min and max
-        # normalise head height to be zero at mean head height
-            # so,
-                # if normalised height is < 0: downward motion
-                # vice versa
+    # def evaluate_form():
+    #     print()
+    #     # angle of hip-ankle line should be close to perpendicular with floor
+    #     # angle of knee-ankle line should be close to perpendicular with floor
+    #     # should ideally be stacking multiple frames (markov property)
+    #         # use a function that is called on first frames (24) only to determine mean head height
+    #             # using mean head height and foot height we have min and max
+    #     # normalise head height to be zero at mean head height
+    #         # so,
+    #             # if normalised height is < 0: downward motion
+    #             # vice versa
 

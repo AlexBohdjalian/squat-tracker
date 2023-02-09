@@ -13,7 +13,7 @@ def some_function(frame):
     landmarks = pose_estimator.make_prediction(frame)
     landmark_list = form_analyser.get_landmarks(landmarks)
 
-    squat_details = form_analyser.determine_squat_stage(landmark_list, True) # For now just get 'Standing'|'Bottom' and angles
+    squat_details = form_analyser.determine_squat_stage(landmark_list) # For now just get 'Standing'|'Bottom' and angles
     
     return
 
@@ -26,7 +26,7 @@ def process_frame():
     
     # Process and return the data
     landmarks = pose_estimator.make_prediction(frame)
-    squat_details = form_analyser.determine_squat_stage(landmarks, True) # For now just get 'Standing'|'Bottom' and angles
+    squat_details = form_analyser.determine_squat_stage(landmarks) # For now just get 'Standing'|'Bottom' and angles
 
     response = pickle.dumps([landmarks, squat_details])
     

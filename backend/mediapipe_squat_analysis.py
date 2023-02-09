@@ -7,18 +7,22 @@ import time
 
 
 def draw_text(img, text,
+          to_centre=False,
           font=cv2.FONT_HERSHEY_PLAIN,
           pos=(0, 0),
           font_scale=3,
           font_thickness=2,
-          text_color=(0, 255, 0),
+          text_color=(219, 123, 3),
           text_color_bg=(0, 0, 0)
           ):
     """ Draws text on a cv2 image in a given spot with a background """
     x, y = pos
     text_size, _ = cv2.getTextSize(text, font, font_scale, font_thickness)
     text_w, text_h = text_size
-    cv2.rectangle(img, pos, (x + text_w, y + text_h), text_color_bg, -1)
+    if to_centre:
+        x -= text_w // 2
+        y -= text_h // 2
+    cv2.rectangle(img, (x, y), (x + text_w, y + text_h), text_color_bg, -1)
     cv2.putText(img, text, (x, y + text_h + font_scale - 1), font, font_scale, text_color, font_thickness)
 
     return text_size
@@ -38,11 +42,11 @@ def get_aspect_dim(image_dim, width, height):
     return dim
 
 
-def rescale_frame(frame, percent=50):
-    width = int(frame.shape[1] * percent/ 100)
-    height = int(frame.shape[0] * percent/ 100)
-    dim = (width, height)
-    return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
+# def rescale_frame(frame, percent=50):
+#     width = int(frame.shape[1] * percent/ 100)
+#     height = int(frame.shape[0] * percent/ 100)
+#     dim = (width, height)
+#     return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
 
 def display_angle_at_joint(frame, joint, angle):
@@ -51,14 +55,18 @@ def display_angle_at_joint(frame, joint, angle):
         draw_text(
             frame,
             str(angle) + ' deg',
-            pos=tuple(np.multiply(joint_pos, frame.shape[:2][::-1]).astype(int))
+            pos=tuple(np.multiply(joint_pos, frame.shape[:2][::-1]).astype(int)),
+            to_centre=True
         )
 
 
 def process_data(video_source, frame_stack, frame_skip, show_output, save_video):
-    print(f'Beginning "{video_source}" ...')
+    if video_source != 0:
+        print(f'Beginning "{video_source}" ...')
+    else:
+        print(f'Beginning LIVE CAMERA FEED ...')
 
-    # Get video capture and constants (organize these)
+    # Get video capture and constants
     cap = cv2.VideoCapture(video_source)
     fps = cap.get(cv2.CAP_PROP_FPS)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
@@ -69,7 +77,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     # Window dimensions
     window_width = None
     window_height = 500
-    dim = get_aspect_dim((frame_height, frame_width), window_width, window_height)
+    aspect_dim = get_aspect_dim((frame_height, frame_width), window_width, window_height)
 
     # Output video information
     print(f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
@@ -80,13 +88,14 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
     rep_count = 0
     squat_start_time = 0
     squat_end_time = 0
+    prev_frame_time = 0
     initiated_squat = False
+    reached_bottom = False
     squat_details = ['Unsure', '', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
 
     # Begin loop
     while True:
         # Get the frame
-        frame_start_time = time.time()
         success, frame = cap.read()
         if not success:
             break
@@ -100,11 +109,21 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
 
             if not initiated_squat and squat_details[0] == 'Descending':
                 initiated_squat = True
+                reached_bottom = False
                 squat_start_time = time.time()
+            elif initiated_squat and squat_details[0] == 'Bottom':
+                reached_bottom = True
             elif initiated_squat and squat_details[0] == 'Standing':
                 initiated_squat = False
                 squat_end_time = time.time()
                 rep_count += 1
+            # TODO: instead of checking if it goes, descending, standing
+                # check it goes descending, bottom, standing, so say
+                # if initiated_squat and squat_details[0] == 'Bottom':
+                    # reached_bottom = True
+                # then, sufficient_depth = not initiated_squat and reached_bottom
+                # then draw text accordingly
+                # also, in first if above, set reached_bottom to False
 
         if pose_landmarks is None:
             results_stack = []
@@ -135,31 +154,41 @@ def process_data(video_source, frame_stack, frame_skip, show_output, save_video)
             display_angle_at_joint(frame, knee, squat_details[2])
             display_angle_at_joint(frame, hip, squat_details[3])
 
-        # Draw squat stage and repetitions
-        draw_text(frame, squat_details[0], font_scale=4)
-        draw_text(frame, 'Repetitions: ' + str(rep_count), pos=(0, 40))
+        if initiated_squat and not reached_bottom:
+            depth_reached_text = 'In progress'
+        elif reached_bottom:
+            depth_reached_text = 'Good depth'
+        elif rep_count > 1 and not initiated_squat and not reached_bottom:
+            depth_reached_text = 'Bad depth'
+        elif rep_count == 0:
+            depth_reached_text = 'No rep performed'
 
-        # Calculate and draw the rep duration
         if squat_end_time >= squat_start_time:
             squat_duration = round(squat_end_time - squat_start_time, 2)
-        draw_text(frame, 'Duration: ' + str(squat_duration) + 's', pos=(0, 70))
+
+        # Draw text with background
+        # TODO: move constant out of loop
+        cv2.rectangle(frame, (0, 0), (frame.shape[0], 30+40*5), (0, 0, 0), -1)
+        cv2.putText(frame, squat_details[0], (5, 50), cv2.FONT_HERSHEY_PLAIN, 4, text_colour, 2)
+        cv2.putText(frame, 'Repetitions: ' + str(rep_count), (5, 90), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
+        cv2.putText(frame, 'Depth reached: ' + depth_reached_text, (5, 130), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)       
+        cv2.putText(frame, 'Duration: ' + str(squat_duration) + 's', (5, 170), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
 
         # If the output is being shown in real-time, enforce desired fps and calculate actual fps
         if show_output:
-            elapsed_time = time.time() - frame_start_time
-            wait_time = int(1000/fps - elapsed_time)
-            wait_time -= 35 # account for system delay
+            elapsed_time = time.time() - prev_frame_time
+            prev_frame_time = time.time()
+            wait_time = int(1000.0 * (1.0 / fps - elapsed_time))
 
             if wait_time <= 0:
                 wait_time = 1
 
-            actual_fps = int(1 / (elapsed_time + wait_time/1000))
+            actual_fps = int(1 / (elapsed_time + wait_time / 1000))
             if cv2.waitKey(wait_time) & 0xFF == ord('q'):
                 break
 
-            # Display final output
-            draw_text(frame, 'FPS: ' + str(actual_fps), pos=(0, 100))
-            cv2.imshow('MediaPipe Pose', cv2.resize(frame, dim, cv2.INTER_AREA))
+            cv2.putText(frame, 'FPS: ' + str(actual_fps), (5, 210), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
+            cv2.imshow('MediaPipe Pose', cv2.resize(frame, aspect_dim, cv2.INTER_AREA))
 
         frames.append(frame)
 
@@ -196,17 +225,24 @@ if __name__ == '__main__':
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_pose = mp.solutions.pose
+    text_colour = (219, 123, 3)
 
     videos = []
     # comment unwanted
     # videos.append("backend/assets/person_walking.mp4")
-    videos.append("backend/assets/barbell_back_squat.mp4")
+    # videos.append("backend/assets/barbell_back_squat.mp4")
     videos.append("backend/assets/barbell_front_squat.mp4")
-    videos.append("backend/assets/dumbbell_goblet_squat.mp4")
-    videos.append("backend/assets/dan_squat.mp4")
-    videos.append("backend/assets/me_squat.mp4")
+    # videos.append("backend/assets/goblet_squat.mp4")
+    # videos.append("backend/assets/dumbbell_goblet_squat.mp4")
+    # videos.append("backend/assets/dan_squat.mp4")
+    # videos.append("backend/assets/me_squat.mp4")
     # videos.append(0)
+
+    # TODO: look into this for threading:
+    # https://pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
+    # TODO: fix squat stage detection to work better for all examples. extract data for easier analysis rather than watching video?
+    # TODO: redo how squat stages are interpreted. come up with flowchart for analysing motion
 
     for video_path in videos:
         # ensure that video is ~720x1280 @ 30fps for best results
-        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=True)
+        process_data(video_path, frame_stack, frame_skip, show_output=False, save_video=False)
