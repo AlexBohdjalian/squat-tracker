@@ -39,7 +39,7 @@ class SquatFormAnalyzer():
             'left_foot_index': 31,
             'right_foot_index': 32
         }
-        
+        self.most_visible_side = ''
 
 
     def calc_angle(self, joints):
@@ -90,13 +90,43 @@ class SquatFormAnalyzer():
         return all(joints) and \
            all([joint[3] > confidence_threshold for joint in joints])
 
+    def get_most_visible_side(self, pose_landmarks):
+        if self.most_visible_side != '':
+            return self.most_visible_side
+
+        # Extract joints from both sides
+        right_joints = self.get_landmarks(
+            pose_landmarks,
+            ['right_shoulder', 'right_hip', 'right_knee', 'right_ankle', 'right_foot_index']
+        )
+        left_joints = self.get_landmarks(
+            pose_landmarks,
+            ['left_shoulder', 'left_hip', 'left_knee', 'left_ankle', 'left_foot_index']
+        )
+
+        right_visibility = 0
+        left_visibility = 0
+        for right_joint, left_joint in zip(right_joints, left_joints):
+            right_visibility += right_joint[3]
+            left_visibility += left_joint[3]
+
+        if right_visibility < left_visibility:
+            self.most_visible_side = 'left_'
+        else:
+            self.most_visible_side = 'right_'
+        
+        return self.most_visible_side
+
 
     def analyse_landmark_stack(self, pose_landmarks_stack):
         # this needs to vary with frame stack size
         moving_threshold = 0.01 # move to __init__
         start_head_height = self.get_landmarks(pose_landmarks_stack[0], ['nose'])[0][1]
         end_head_height = self.get_landmarks(pose_landmarks_stack[-1], ['nose'])[0][1]
-        squat_details = self.determine_squat_stage(pose_landmarks_stack[-1])
+
+        most_visible_side = self.get_most_visible_side(pose_landmarks_stack[-1])
+
+        squat_details = self.determine_squat_stage(pose_landmarks_stack[-1], most_visible_side)
 
         if squat_details[0] == 'Unsure':
             if abs(end_head_height - start_head_height) >= moving_threshold:
@@ -110,35 +140,14 @@ class SquatFormAnalyzer():
         return squat_details
 
 
-    def determine_squat_stage(self, pose_landmarks):
+    def determine_squat_stage(self, pose_landmarks, joint_side):
         if pose_landmarks == None:
             return ['Undetected', '', '', '']
-        
-        # Extract joints from both sides
-        right_joints = self.get_landmarks(
+
+        shoulder, hip, knee, ankle, toe = self.get_landmarks(
             pose_landmarks,
-            ['right_shoulder', 'right_hip', 'right_knee', 'right_ankle', 'right_foot_index']
+            [joint_side + 'shoulder', joint_side + 'hip', joint_side + 'knee', joint_side + 'ankle', joint_side + 'foot_index']
         )
-        left_joints = self.get_landmarks(
-            pose_landmarks,
-            ['left_shoulder', 'left_hip', 'left_knee', 'left_ankle', 'left_foot_index']
-        )
-
-        right_visibility = 0
-        left_visibility = 0
-        best_side = ''
-        for right_joint, left_joint in zip(right_joints, left_joints):
-            right_visibility += right_joint[3]
-            left_visibility += left_joint[3]
-
-        if right_visibility < left_visibility:
-            most_visible_joints = left_joints
-            best_side = 'left_'
-        else:
-            most_visible_joints = right_joints
-            best_side = 'right_'
-
-        shoulder, hip, knee, ankle, toe = most_visible_joints
 
         joints = [toe, ankle, knee]
         toe_ankle_knee = None
@@ -182,7 +191,7 @@ class SquatFormAnalyzer():
             '' if toe_ankle_knee == None else round(toe_ankle_knee),
             '' if ankle_knee_hip == None else round(ankle_knee_hip),
             '' if knee_hip_shoulder == None else round(knee_hip_shoulder),
-            best_side
+            joint_side
         ]
 
 
