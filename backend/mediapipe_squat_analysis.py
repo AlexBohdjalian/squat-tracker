@@ -5,6 +5,7 @@ from squat_check import SquatFormAnalyzer
 import cv2
 import mediapipe as mp
 import time
+import re
 
 
 def draw_text(img, text,
@@ -101,6 +102,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     prev_frame_time = 0
     squat_details = ['Unsure', '', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
     squat_path = []
+    rep_indexes = []
     # rep_history = []
     form_analysis = 'No rep Performed'
     form_colour = good_form_colour
@@ -127,79 +129,81 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
                 elif squat_path[-1] != squat_details[0]:
                     squat_path.append(squat_details[0])
 
-                    # TODO: account for all transitions
-                    # ..., standing, ascending, ... = 
+                    
+                    # expec: ['BAS', 'DBAS', 'DBAS', 'DBAS', 'DA', 'DA', 'DAS', 'DBAS', 'BAS', 'BA', 'BA']
+                    # need to recognise DBASBASBABA as DBAS BAS BA BA
+                        # need to recognise DBASBAS as DBAS BAS
+                        # need to recognise BA in (A|S)BA (check this logic)
+                    # squat_path_front_squat = 'BASDBASDBASDBASDADADASDBASBASBABA'
+
+
                     if len(squat_path) >= 2:
                         if squat_path[-2] == 'Standing' and squat_path[-1] == 'Descending':
-                            form_analysis = 'In Progress'
                             form_colour = good_form_colour
+                            form_analysis = 'In Progress'
                             squat_start_time = time.time()
-                            # current_rep_quality = []
+                            rep_indexes.append(('start', len(squat_path) - 1))
+
+                        elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Bottom':
+                            form_colour = good_form_colour
+                            form_analysis = 'Good Depth' # Ascent not detected
+                            squat_start_time = time.time()
+                            rep_indexes.append(('start', len(squat_path) - 1))
+
+                        elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Ascending':
+                            form_analysis = form_analysis
+                            squat_path.pop(-1) # this stage sequence can only happen in error
 
                         elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Bottom':
-                            form_analysis = 'Good Depth'
-
-                        elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Ascending':
+                            form_colour = good_form_colour
                             form_analysis = 'Good Depth'
 
                         elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Ascending':
-                            form_analysis = 'Bad Depth'
                             form_colour = bad_form_colour
-                            # current_rep_quality.append(RepQuality.BAD_DEPTH)
+                            form_analysis = 'Bad Depth' # Bad Depth
 
-                        elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Bottom':
-                            form_analysis = 'Descent Not Detected'
-                            form_colour = bad_form_colour
-                            # current_rep_quality.append(RepQuality.NO_DESCENT)
+                        elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Standing':
+                            form_analysis = form_analysis
+                            squat_path.pop(-1) # this stage sequence can only happen in error
 
-                        elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Descending':
-                            form_analysis = 'No Lockout'
-                            form_colour = bad_form_colour
-                            squat_start_time = time.time()
-                            # current_rep_quality.append(RepQuality.BAD_LOCKOUT)
+                        elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Ascending':
+                            form_analysis = form_analysis # Maintain prev message
 
                         elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Standing':
-                            form_analysis = 'Ascent Not Detected'
-                            form_colour = bad_form_colour
+                            form_colour = good_form_colour
+                            form_analysis = 'Good Lockout' # Ascent not detected
                             squat_end_time = time.time()
-                            # current_rep_quality.append(RepQuality.NO_ASCENT)
+                            rep_indexes.append(('end', len(squat_path) - 1))
+
+                        elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Descending':
+                            form_analysis = form_analysis
+                            squat_path.pop(-1) # this stage sequence can only happen in error
 
                         elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Standing':
                             form_colour = good_form_colour
+                            form_analysis = 'Good Lockout'
                             squat_end_time = time.time()
+                            rep_indexes.append(('end', len(squat_path) - 1))
+
+                        elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Descending':
+                            form_colour = bad_form_colour
+                            form_analysis = 'Bad Lockout' # Bad Lockout
+                            squat_start_time = time.time()
+                            squat_end_time = time.time()
+                            rep_indexes.append(('start', len(squat_path) - 1))
+                            rep_indexes.append(('end', len(squat_path) - 2))
+
+                        elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Bottom':
+                            form_analysis = form_analysis
+                            squat_path.pop(-1) # this stage sequence can only happen in error
 
                         else:
-                            form_analysis = ''
-
+                            form_colour = bad_form_colour
+                            form_analysis = 'Unknown State'
 
                         # ONLY COUNT CLEAN REPS?
                         if len(squat_path) >= 4 and squat_path[-4:] == ['Descending', 'Bottom', 'Ascending', 'Standing']:
-                            # if len(squat_path) > 10: # set a limit to squat_path for memory optimisation (necessary?)
-                            #     squat_path = squat_path[5:]
                             rep_count += 1
-
-
-                        # when does a general rep start?
-                            # ..., standing, descending, ...
-                            # ..., ascending, descending, ...
-
-                        # when does a general rep end?
-                            # ..., ascending, standing, ...
-                            # ..., bottom, standing, ...
-                            
-                        # TODO: determine overall rep here, add to rep history
-                        # cleanup any unused variables/ constants and above if block
-
-                        # if squat_path[-2:] in [['Ascending', 'Standing'], ['Bottom', 'Standing']]:
-                        #     start = None
-                        #     for i in range(len(squat_path) - 3):
-                        #         if squat_path[i:i+2] in [['Standing', 'Descending'], ['Ascending', 'Descending']]:
-                        #             start = i
-                        #             break
-                        #     if start is not None:
-                        #         rep_history.append(squat_path[start:])
-                            
-                        #     squat_path = []
 
         if pose_landmarks is None:
             results_stack = []
@@ -271,64 +275,60 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     print(f'Video was processed in: {time.strftime("%Mm %Ss", time.gmtime(round(processed_time - start_time, 3)))}')
 
     if post_analysis:
-        print('\nProducing post-set analysis...')
+        print('\n\033[36mProducing post-set analysis (NOT COMPLETE)...')
         good_reps = 0
         poor_depth_reps = 0
         poor_lockout_reps = 0
         no_asc_reps = 0
         no_desc_reps = 0
+        unknown_reps = 0
 
-        print(squat_path)
-        
-        # for thing in rep_history:
-        #     print(thing)
+        squat_path = "".join([word[0] for word in squat_path])
 
-        # when does a general rep start?
-        # ..., standing, descending, ...
-        # ..., ascending, descending, ...
+        started = True
+        begin = 0
+        reps = []
+        for (t, i) in rep_indexes:
+            if not started:
+                if t == 'start':
+                    begin = i
+                    started = True
+                else:
+                    reps[-1] = squat_path[begin:i+1]
+            else:
+                if t == 'end':
+                    reps.append(squat_path[begin:i+1])
+                    started = False
+                else:
+                    begin = i
 
-        # when does a general rep end?
-        # ..., ascending, standing, ...
-        # ..., bottom, standing, ...
+        # Check this num is correct
+        # print(f'In total there were {len(reps)} reps of varying quality detected')
 
-        # need to account for back and forths of stage mid rep, e.g. STANDING, DESC, asc, desc, asc, desc, BOTTOM, ASC, STANDING
+        for rep in reps:
+            if rep == 'DBAS':
+                good_reps += 1
+            elif rep == 'DAS':
+                poor_depth_reps += 1
+            elif rep == 'DBA':
+                poor_lockout_reps += 1
+            elif rep == 'DA':
+                poor_depth_reps += 1
+                poor_lockout_reps += 1
+            elif rep == 'BAS':
+                no_desc_reps += 1
+            elif rep == 'DBS':
+                no_asc_reps += 1
+            else:
+                print('Unknown rep sequence:', rep)
+                unknown_reps += 1
 
-        print(f'In total there were {rep_count} qualifying reps detected')
-        # Remove starting stages until first 'Standing'
-        for i in range(len(squat_path)):
-            if squat_path[i] == 'Standing':
-                squat_path = squat_path[i:]
-                break
-        
-        for stage in squat_path:
-            # use flowchart to determine squat path
-            # remember:
-                    # when does a general rep start?
-                    # ..., standing, descending, ...
-                    # ..., ascending, descending, ...
-
-                    # when does a general rep end?
-                    # ..., ascending, standing, ...
-                    # ..., bottom, standing, ...
-            pass
-
-        # # TODO: ensure rep_history is constructed correctly / this all can't be done more efficiently?
-        # for rep in rep_history:
-        #     # count good reps:
-        #     if rep == ['Standing', 'Descending', 'Bottom', 'Ascending', 'Standing']:
-        #         good_reps += 1
-        #     elif rep == ['Ascending', 'Descending', 'Bottom', 'Ascending', 'Standing']:
-        #         poor_lockout_reps += 1
-        #     elif rep == ['Ascending', 'Descending', 'Ascending', 'Standing'] or \
-        #         ['Standing', 'Descending', 'Bottom', 'Ascending', 'Standing']:
-        #         poor_depth_reps += 1
-        #     # etc.
-
-        print('good_reps', good_reps)
-        print('poor_depth_reps', poor_depth_reps)
-        print('poor_lockout_reps', poor_lockout_reps)
-        print('no_asc_reps', no_asc_reps)
-        print('no_desc_reps', no_desc_reps)
+        print('Good Reps:\t', good_reps)
+        print('Poor Depth:\t', poor_depth_reps)
+        print('Poor Lockout:\t', poor_lockout_reps)
+        print('No Ascent:\t', no_asc_reps)
+        print('No Descent:\t', no_desc_reps)
+        print('Unknown:\t', unknown_reps)
         # use data in squat_path, (save squat durations?), ...
         # produce graphs / summary e.g...
         # 5 good reps performed with tempos of ... indicating RPE of ...
@@ -337,8 +337,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
         # 1 rep did not register you descending, ensure the camera is in a good spot...
         # No asymmetries detected in joint paths
         # blah?
-
-        print()
+    print('\033[0m')
 
     if save_video:
         processed_video_path = f'{video_source[:-4]}_processed.mp4'
@@ -385,7 +384,10 @@ if __name__ == '__main__':
     # TODO: fix squat stage detection to work better for all examples. extract data for easier analysis rather than watching video?
     # TODO: redo how squat stages are interpreted. come up with flowchart for analysing motion
     # TODO: move constants out of loop
+    # TODO: Refactor process_data to reduce complexity
+    # TODO: use post_analysis bool in above loop to improve performance is False
+    # TODO: make app select video from album for now
 
     for video_path in videos:
         # ensure that video is ~720x1280 @ 30fps for best results
-        process_data(video_path, frame_stack, frame_skip, show_output=False, post_analysis=False, save_video=True)
+        process_data(video_path, frame_stack, frame_skip, show_output=False, post_analysis=True, save_video=True)
