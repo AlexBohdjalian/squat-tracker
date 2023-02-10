@@ -1,10 +1,11 @@
-from enum import Enum
+import cv2
 import numpy as np
+import time
+from enum import Enum
+import mediapipe as mp
+from imutils.video import FileVideoStream
 from mediapipe_estimator import MediaPipeDetector
 from squat_check import SquatFormAnalyzer
-import cv2
-import mediapipe as mp
-import time
 
 
 def draw_text(img, text,
@@ -57,16 +58,19 @@ def display_angle_at_joint(frame, joint, angle):
 def process_data(video_source, frame_stack, frame_skip, show_output, post_analysis, save_video):
     if video_source != 0:
         print(f'Beginning "{video_source}" ...')
+        cap = FileVideoStream(video_source).start()
+        cap_stream = cap.stream
     else:
         print(f'Beginning LIVE CAMERA FEED ...')
+        cap = cv2.VideoCapture(video_source)
+        cap_stream = cap
 
     # Get video capture and constants
-    cap = cv2.VideoCapture(video_source)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
     start_time = time.time()
-    frame_width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-    frame_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    fps = cap_stream.get(cv2.CAP_PROP_FPS)
+    video_length = int(cap_stream.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
+    frame_width  = cap_stream.get(cv2.CAP_PROP_FRAME_WIDTH)
+    frame_height = cap_stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
     
     # Squat form constants
     good_form_colour = text_colour
@@ -102,9 +106,14 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     # Begin loop
     while True:
         # Get the frame
-        success, frame = cap.read()
-        if not success:
-            break
+        if video_source != 0:
+            frame = cap.read()
+            if frame is None: # is this robust?
+                break
+        else:
+            success, frame = cap.read()
+            if not success:
+                break
 
         # Process then send the data
         pose_landmarks = pose_detector.make_prediction(frame)
@@ -120,14 +129,6 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
                     squat_path.append(squat_details[0])
                 elif squat_path[-1] != squat_details[0]:
                     squat_path.append(squat_details[0])
-
-                    
-                    # expec: ['BAS', 'DBAS', 'DBAS', 'DBAS', 'DA', 'DA', 'DAS', 'DBAS', 'BAS', 'BA', 'BA']
-                    # need to recognise DBASBASBABA as DBAS BAS BA BA
-                        # need to recognise DBASBAS as DBAS BAS
-                        # need to recognise BA in (A|S)BA (check this logic)
-                    # squat_path_front_squat = 'BASDBASDBASDBASDADADASDBASBASBABA'
-
 
                     if len(squat_path) >= 2:
                         if squat_path[-2] == 'Standing' and squat_path[-1] == 'Descending':
@@ -260,7 +261,9 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
 
         frames.append(frame)
 
-    cap.release()
+    cap_stream.release()
+    if video_source != 0:
+        cap.stop()
     cv2.destroyAllWindows()
 
     processed_time = time.time()
@@ -361,18 +364,14 @@ if __name__ == '__main__':
     text_colour = (219, 123, 3)
 
     videos = []
-    # comment unwanted
-    # videos.append("backend/assets/person_walking.mp4")
     videos.append("backend/assets/barbell_back_squat.mp4")
-    videos.append("backend/assets/barbell_front_squat.mp4")
-    videos.append("backend/assets/goblet_squat.mp4")
-    videos.append("backend/assets/dumbbell_goblet_squat.mp4")
-    videos.append("backend/assets/dan_squat.mp4")
-    videos.append("backend/assets/me_squat.mp4")
+    # videos.append("backend/assets/barbell_front_squat.mp4")
+    # videos.append("backend/assets/goblet_squat.mp4")
+    # videos.append("backend/assets/dumbbell_goblet_squat.mp4")
+    # videos.append("backend/assets/dan_squat.mp4")
+    # videos.append("backend/assets/me_squat.mp4")
     # videos.append(0)
 
-    # TODO: look into this for threading:
-    # https://pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
     # TODO: move constants out of loop
     # TODO: Refactor process_data to reduce complexity
     # TODO: use post_analysis bool in above loop to improve performance is False
@@ -380,4 +379,4 @@ if __name__ == '__main__':
 
     for video_path in videos:
         # ensure that video is ~720x1280 @ 30fps for best results
-        process_data(video_path, frame_stack, frame_skip, show_output=False, post_analysis=True, save_video=True)
+        process_data(video_path, frame_stack, frame_skip, show_output=True, post_analysis=True, save_video=False)
