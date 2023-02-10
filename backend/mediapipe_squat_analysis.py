@@ -5,7 +5,6 @@ from squat_check import SquatFormAnalyzer
 import cv2
 import mediapipe as mp
 import time
-import re
 
 
 def draw_text(img, text,
@@ -42,13 +41,6 @@ def get_aspect_dim(image_dim, width, height):
         dim = (width, int(h * r))
 
     return dim
-
-
-# def rescale_frame(frame, percent=50):
-#     width = int(frame.shape[1] * percent/ 100)
-#     height = int(frame.shape[0] * percent/ 100)
-#     dim = (width, height)
-#     return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
 
 def display_angle_at_joint(frame, joint, angle):
@@ -381,8 +373,6 @@ if __name__ == '__main__':
 
     # TODO: look into this for threading:
     # https://pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
-    # TODO: fix squat stage detection to work better for all examples. extract data for easier analysis rather than watching video?
-    # TODO: redo how squat stages are interpreted. come up with flowchart for analysing motion
     # TODO: move constants out of loop
     # TODO: Refactor process_data to reduce complexity
     # TODO: use post_analysis bool in above loop to improve performance is False
