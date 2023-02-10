@@ -29,7 +29,6 @@ def draw_text(img, text,
 
     return text_size
 
-
 def get_aspect_dim(image_dim, width, height):
     """ Gets the dimension to resize a frame to while maintaining aspect ratio """
     (h, w) = image_dim
@@ -43,7 +42,6 @@ def get_aspect_dim(image_dim, width, height):
 
     return dim
 
-
 def display_angle_at_joint(frame, joint, angle):
     if joint.visibility > 0.5:
         joint_pos = [joint.x, joint.y]
@@ -53,7 +51,6 @@ def display_angle_at_joint(frame, joint, angle):
             pos=tuple(np.multiply(joint_pos, frame.shape[:2][::-1]).astype(int)),
             to_centre=True
         )
-
 
 def process_data(video_source, frame_stack, frame_skip, show_output, post_analysis, save_video):
     if video_source != 0:
@@ -75,11 +72,6 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     # Squat form constants
     good_form_colour = text_colour
     bad_form_colour = (0, 0, 255)
-    class RepQuality(Enum):
-        BAD_DEPTH = 1
-        BAD_LOCKOUT = 2
-        NO_DESCENT = 3
-        NO_ASCENT = 4
     
     # Window dimensions
     window_width = None
@@ -99,7 +91,6 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     squat_details = ['Unsure', '', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
     squat_path = []
     rep_indexes = []
-    # rep_history = []
     form_analysis = 'No rep Performed'
     form_colour = good_form_colour
 
@@ -352,7 +343,6 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
 
     print('Done.\n')
 
-
 if __name__ == '__main__':
     pose_detector = MediaPipeDetector()
     form_analyser = SquatFormAnalyzer()
@@ -372,10 +362,12 @@ if __name__ == '__main__':
     # videos.append("backend/assets/me_squat.mp4")
     # videos.append(0)
 
-    # TODO: move constants out of loop
     # TODO: Refactor process_data to reduce complexity
-    # TODO: use post_analysis bool in above loop to improve performance is False
+        # TODO: move constants out of loop
     # TODO: make app select video from album for now
+    # TODO: use post_analysis bool in above loop to improve performance is False
+    # TODO: record rep durations?
+    # TODO: create review video highlighting mistakes
 
     for video_path in videos:
         # ensure that video is ~720x1280 @ 30fps for best results

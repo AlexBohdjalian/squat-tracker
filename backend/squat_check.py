@@ -103,7 +103,6 @@ class SquatFormAnalyzer():
             pose_landmarks,
             ['left_shoulder', 'left_hip', 'left_knee', 'left_ankle', 'left_foot_index']
         )
-
         right_visibility = 0
         left_visibility = 0
         for right_joint, left_joint in zip(right_joints, left_joints):
@@ -138,7 +137,6 @@ class SquatFormAnalyzer():
                     squat_details[0] = 'Ascending'
 
         return squat_details
-
 
     def determine_squat_stage(self, pose_landmarks, joint_side):
         if pose_landmarks == None:
@@ -193,17 +191,3 @@ class SquatFormAnalyzer():
             '' if knee_hip_shoulder == None else round(knee_hip_shoulder),
             joint_side
         ]
-
-
-    # def evaluate_form():
-    #     print()
-    #     # angle of hip-ankle line should be close to perpendicular with floor
-    #     # angle of knee-ankle line should be close to perpendicular with floor
-    #     # should ideally be stacking multiple frames (markov property)
-    #         # use a function that is called on first frames (24) only to determine mean head height
-    #             # using mean head height and foot height we have min and max
-    #     # normalise head height to be zero at mean head height
-    #         # so,
-    #             # if normalised height is < 0: downward motion
-    #             # vice versa
-
