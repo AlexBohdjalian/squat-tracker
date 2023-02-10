@@ -52,6 +52,91 @@ def display_angle_at_joint(frame, joint, angle):
             to_centre=True
         )
 
+def extract_reps_from_path(path, indexes):
+    start = 0
+    end = 0
+    reps = []
+    for (t, i) in indexes:
+        if t == 'start':
+            start = i
+        elif t == 'end':
+            end = i
+            reps.append(path[start:end+1])
+    return reps
+
+def update_states_based_on_squat_path(
+        squat_path,
+        form_text_colour,
+        form_analysis,
+        squat_start_time,
+        squat_end_time,
+        rep_indexes
+    ):
+    if squat_path[-2] == 'Standing' and squat_path[-1] == 'Descending':
+        form_text_colour = good_form_colour
+        form_analysis = 'In Progress'
+        squat_start_time = time.time()
+        rep_indexes.append(('start', len(squat_path) - 1))
+
+    elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Bottom':
+        form_text_colour = good_form_colour
+        form_analysis = 'Good Depth' # Ascent not detected
+        squat_start_time = time.time()
+        rep_indexes.append(('start', len(squat_path) - 1))
+
+    elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Ascending':
+        form_analysis = form_analysis
+        squat_path.pop(-1) # this stage sequence can only happen in error
+
+    elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Bottom':
+        form_text_colour = good_form_colour
+        form_analysis = 'Good Depth'
+
+    elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Ascending':
+        form_text_colour = bad_form_colour
+        form_analysis = 'Bad Depth' # Bad Depth
+
+    elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Standing':
+        form_analysis = form_analysis
+        squat_path.pop(-1) # this stage sequence can only happen in error
+
+    elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Ascending':
+        form_analysis = form_analysis # Maintain prev message
+
+    elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Standing':
+        form_text_colour = good_form_colour
+        form_analysis = 'Good Lockout' # Ascent not detected
+        squat_end_time = time.time()
+        rep_indexes.append(('end', len(squat_path) - 1))
+
+    elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Descending':
+        form_analysis = form_analysis
+        squat_path.pop(-1) # this stage sequence can only happen in error
+
+    elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Standing':
+        form_text_colour = good_form_colour
+        form_analysis = 'Good Lockout'
+        squat_end_time = time.time()
+        rep_indexes.append(('end', len(squat_path) - 1))
+
+    elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Descending':
+        form_text_colour = bad_form_colour
+        form_analysis = 'Bad Lockout' # Bad Lockout
+        squat_start_time = time.time()
+        squat_end_time = time.time()
+        rep_indexes.append(('start', len(squat_path) - 1))
+        rep_indexes.append(('end', len(squat_path) - 2))
+
+    elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Bottom':
+        form_analysis = form_analysis
+        squat_path.pop(-1) # this stage sequence can only happen in error
+
+    else:
+        form_text_colour = bad_form_colour
+        form_analysis = 'Unknown State'
+    
+    return form_text_colour, form_analysis, squat_start_time, squat_end_time
+
 def process_data(video_source, frame_stack, frame_skip, show_output, post_analysis, save_video):
     if video_source != 0:
         print(f'Beginning "{video_source}" ...')
@@ -70,6 +155,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     frame_height = cap_stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
     
     # Squat form constants
+    global good_form_colour, bad_form_colour
     good_form_colour = text_colour
     bad_form_colour = (0, 0, 255)
     
@@ -92,7 +178,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     squat_path = []
     rep_indexes = []
     form_analysis = 'No rep Performed'
-    form_colour = good_form_colour
+    form_text_colour = good_form_colour
 
     # Begin loop
     while True:
@@ -122,68 +208,15 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
                     squat_path.append(squat_details[0])
 
                     if len(squat_path) >= 2:
-                        if squat_path[-2] == 'Standing' and squat_path[-1] == 'Descending':
-                            form_colour = good_form_colour
-                            form_analysis = 'In Progress'
-                            squat_start_time = time.time()
-                            rep_indexes.append(('start', len(squat_path) - 1))
-
-                        elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Bottom':
-                            form_colour = good_form_colour
-                            form_analysis = 'Good Depth' # Ascent not detected
-                            squat_start_time = time.time()
-                            rep_indexes.append(('start', len(squat_path) - 1))
-
-                        elif squat_path[-2] == 'Standing' and squat_path[-1] == 'Ascending':
-                            form_analysis = form_analysis
-                            squat_path.pop(-1) # this stage sequence can only happen in error
-
-                        elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Bottom':
-                            form_colour = good_form_colour
-                            form_analysis = 'Good Depth'
-
-                        elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Ascending':
-                            form_colour = bad_form_colour
-                            form_analysis = 'Bad Depth' # Bad Depth
-
-                        elif squat_path[-2] == 'Descending' and squat_path[-1] == 'Standing':
-                            form_analysis = form_analysis
-                            squat_path.pop(-1) # this stage sequence can only happen in error
-
-                        elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Ascending':
-                            form_analysis = form_analysis # Maintain prev message
-
-                        elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Standing':
-                            form_colour = good_form_colour
-                            form_analysis = 'Good Lockout' # Ascent not detected
-                            squat_end_time = time.time()
-                            rep_indexes.append(('end', len(squat_path) - 1))
-
-                        elif squat_path[-2] == 'Bottom' and squat_path[-1] == 'Descending':
-                            form_analysis = form_analysis
-                            squat_path.pop(-1) # this stage sequence can only happen in error
-
-                        elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Standing':
-                            form_colour = good_form_colour
-                            form_analysis = 'Good Lockout'
-                            squat_end_time = time.time()
-                            rep_indexes.append(('end', len(squat_path) - 1))
-
-                        elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Descending':
-                            form_colour = bad_form_colour
-                            form_analysis = 'Bad Lockout' # Bad Lockout
-                            squat_start_time = time.time()
-                            squat_end_time = time.time()
-                            rep_indexes.append(('start', len(squat_path) - 1))
-                            rep_indexes.append(('end', len(squat_path) - 2))
-
-                        elif squat_path[-2] == 'Ascending' and squat_path[-1] == 'Bottom':
-                            form_analysis = form_analysis
-                            squat_path.pop(-1) # this stage sequence can only happen in error
-
-                        else:
-                            form_colour = bad_form_colour
-                            form_analysis = 'Unknown State'
+                        form_text_colour, form_analysis, squat_start_time, squat_end_time = \
+                            update_states_based_on_squat_path(
+                            squat_path,
+                            form_text_colour,
+                            form_analysis,
+                            squat_start_time,
+                            squat_end_time,
+                            rep_indexes
+                        )
 
                         # ONLY COUNT CLEAN REPS?
                         if len(squat_path) >= 4 and squat_path[-4:] == ['Descending', 'Bottom', 'Ascending', 'Standing']:
@@ -229,7 +262,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
         cv2.rectangle(frame, (0, 0), (frame.shape[0], 30+40*box_len), (0, 0, 0), -1)
         cv2.putText(frame, squat_details[0], (5, 50), cv2.FONT_HERSHEY_PLAIN, 4, text_colour, 2)
         cv2.putText(frame, 'Repetitions: ' + str(rep_count), (5, 90), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
-        cv2.putText(frame, 'Form: ' + form_analysis, (5, 130), cv2.FONT_HERSHEY_PLAIN, 2, form_colour, 2)
+        cv2.putText(frame, 'Form: ' + form_analysis, (5, 130), cv2.FONT_HERSHEY_PLAIN, 2, form_text_colour, 2)
 
         # Make this display live time, then pause while standing
         cv2.putText(frame, 'Duration: ' + str(squat_duration) + 's', (5, 170), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
@@ -271,22 +304,7 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
 
         squat_path = "".join([word[0] for word in squat_path])
 
-        started = True
-        begin = 0
-        reps = []
-        for (t, i) in rep_indexes:
-            if not started:
-                if t == 'start':
-                    begin = i
-                    started = True
-                else:
-                    reps[-1] = squat_path[begin:i+1]
-            else:
-                if t == 'end':
-                    reps.append(squat_path[begin:i+1])
-                    started = False
-                else:
-                    begin = i
+        reps = extract_reps_from_path(squat_path, rep_indexes)
 
         # Check this num is correct
         # print(f'In total there were {len(reps)} reps of varying quality detected')
