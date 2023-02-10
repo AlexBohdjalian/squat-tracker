@@ -92,14 +92,14 @@ class SquatFormAnalyzer():
 
 
     def analyse_landmark_stack(self, pose_landmarks_stack):
-        # this needs to vary with frame skip/stack
-        moving_threshold = 0.5 # move to __init__
+        # this needs to vary with frame stack size
+        moving_threshold = 0.01 # move to __init__
         start_head_height = self.get_landmarks(pose_landmarks_stack[0], ['nose'])[0][1]
         end_head_height = self.get_landmarks(pose_landmarks_stack[-1], ['nose'])[0][1]
         squat_details = self.determine_squat_stage(pose_landmarks_stack[-1])
 
         if squat_details[0] == 'Unsure':
-            if abs(end_head_height - start_head_height) <= moving_threshold:
+            if abs(end_head_height - start_head_height) >= moving_threshold:
                 # heights are relative to top of window so swap
                 start_head_height, end_head_height = end_head_height, start_head_height
                 if end_head_height < start_head_height:
