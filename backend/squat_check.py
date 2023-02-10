@@ -2,8 +2,18 @@ import numpy as np
 import math
 
 class SquatFormAnalyzer():
-    def __init__(self, min_confidence_threshold=0.5):
-        self.min_confidence_threshold = min_confidence_threshold
+    def __init__(self,
+        confidence_threshold=0.5,
+        standing_angle=175,
+        standing_threshold=5,
+        squatting_angle=85,
+        squatting_threshold=5
+    ):
+        self.min_confidence_threshold = confidence_threshold
+        self.standing_angle = standing_angle
+        self.standing_threshold = standing_threshold
+        self.squatting_angle = squatting_angle
+        self.squatting_threshold = squatting_threshold
         self.landmark_names = {
             'nose': 0,
             'left_eye_inner': 1,
@@ -41,8 +51,7 @@ class SquatFormAnalyzer():
         }
         self.most_visible_side = ''
 
-
-    def calc_angle(self, joints):
+    def __calc_angle(self, joints):
         point1, point2, point3 = joints
         radians = np.arctan2(point3[1]-point2[1], point3[0]-point2[0]) \
                 - np.arctan2(point1[1]-point2[1], point1[0]-point2[0])
@@ -53,22 +62,19 @@ class SquatFormAnalyzer():
             
         return angle
 
-
-    def angle_of_singleline(self, point1, point2):
+    def __angle_of_singleline(self, point1, point2):
         """ Calculate angle of a single line """
         x_diff = point2[0] - point1[0]
         y_diff = point2[1] - point1[1]
         return math.degrees(math.atan2(y_diff, x_diff))
 
-
-    def dist_xy(self, point1, point2):
+    def __dist_xy(self, point1, point2):
         """ Euclidean distance between two points point1, point2 """
         diff_point1 = (point1[0] - point2[0]) ** 2
         diff_point2 = (point1[1] - point2[1]) ** 2
         return (diff_point1 + diff_point2) ** 0.5
 
-
-    def point_position(self, point, line_pt_1, line_pt_2):
+    def __point_position(self, point, line_pt_1, line_pt_2):
         """ Left or Right position of the point from a line """
         value = (line_pt_2[0] - line_pt_1[0]) * (point[1] - line_pt_1[1]) - \
                 (line_pt_2[1] - line_pt_1[1]) * (point[0] - line_pt_1[0])
@@ -76,21 +82,11 @@ class SquatFormAnalyzer():
             return "left"
         return "right"
 
-
-    def get_landmarks(self, pose_landmarks, landmarks):
-        return [[
-            pose_landmarks.landmark[self.landmark_names[landmark_name]].x,
-            pose_landmarks.landmark[self.landmark_names[landmark_name]].y,
-            pose_landmarks.landmark[self.landmark_names[landmark_name]].z,
-            pose_landmarks.landmark[self.landmark_names[landmark_name]].visibility
-        ] for landmark_name in landmarks]
-
-
-    def check_confidence(self, confidence_threshold, joints):
+    def __check_confidence(self, confidence_threshold, joints):
         return all(joints) and \
            all([joint[3] > confidence_threshold for joint in joints])
 
-    def get_most_visible_side(self, pose_landmarks):
+    def __get_most_visible_side(self, pose_landmarks):
         if self.most_visible_side != '':
             return self.most_visible_side
 
@@ -116,6 +112,13 @@ class SquatFormAnalyzer():
         
         return self.most_visible_side
 
+    def get_landmarks(self, pose_landmarks, landmarks):
+        return [[
+            pose_landmarks.landmark[self.landmark_names[landmark_name]].x,
+            pose_landmarks.landmark[self.landmark_names[landmark_name]].y,
+            pose_landmarks.landmark[self.landmark_names[landmark_name]].z,
+            pose_landmarks.landmark[self.landmark_names[landmark_name]].visibility
+        ] for landmark_name in landmarks]
 
     def analyse_landmark_stack(self, pose_landmarks_stack):
         # this needs to vary with frame stack size
@@ -123,7 +126,7 @@ class SquatFormAnalyzer():
         start_head_height = self.get_landmarks(pose_landmarks_stack[0], ['nose'])[0][1]
         end_head_height = self.get_landmarks(pose_landmarks_stack[-1], ['nose'])[0][1]
 
-        most_visible_side = self.get_most_visible_side(pose_landmarks_stack[-1])
+        most_visible_side = self.__get_most_visible_side(pose_landmarks_stack[-1])
 
         squat_details = self.determine_squat_stage(pose_landmarks_stack[-1], most_visible_side)
 
@@ -149,39 +152,24 @@ class SquatFormAnalyzer():
 
         joints = [toe, ankle, knee]
         toe_ankle_knee = None
-        if self.check_confidence(self.min_confidence_threshold, joints):
-            toe_ankle_knee = self.calc_angle(joints)
+        if self.__check_confidence(self.min_confidence_threshold, joints):
+            toe_ankle_knee = self.__calc_angle(joints)
 
         joints = [ankle, knee, hip]
         ankle_knee_hip = None
-        if self.check_confidence(self.min_confidence_threshold, joints):
-            ankle_knee_hip = self.calc_angle(joints)
+        if self.__check_confidence(self.min_confidence_threshold, joints):
+            ankle_knee_hip = self.__calc_angle(joints)
 
         joints = [knee, hip, shoulder]
         knee_hip_shoulder = None
-        if self.check_confidence(self.min_confidence_threshold, joints):
-            knee_hip_shoulder = self.calc_angle(joints)
-
-        # Move this to __init__
-        standing_threshold = 5
-        standing_angle = 175
-        squatting_threshold = 5
-        squatting_angle = 85
-
-        # knee-joint angle = ankle_knee_hip
-        # hip-joint angle = knee_hip_shoulder
-
-        # change this to return:
-        # replace angle with 'na'? if any of the points don't meet a confidence threshold
-        # ['stage', toe-ankle-knee, ankle-knee-hip, knee-hip-shoulder]
-        # # USE LOGIC IN:
-        # # https://medium.com/mlearning-ai/an-easy-guide-for-pose-estimation-with-googles-mediapipe-a7962de0e944
+        if self.__check_confidence(self.min_confidence_threshold, joints):
+            knee_hip_shoulder = self.__calc_angle(joints)
 
         stage = 'Unsure'
         if ankle_knee_hip != None:
-            if abs(ankle_knee_hip - standing_angle) <= standing_threshold:
+            if abs(ankle_knee_hip - self.standing_angle) <= self.standing_threshold:
                 stage = 'Standing'
-            elif ankle_knee_hip <= squatting_angle + squatting_threshold:
+            elif ankle_knee_hip <= self.squatting_angle + self.squatting_threshold:
                 stage = 'Bottom'
 
         return [
