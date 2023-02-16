@@ -8,6 +8,6 @@ module.exports = (async () => {
       resolver: {
         // Add bin to assetExts
         assetExts: [...assetExts, 'bin'],
-      }
+      },
     };
   })();

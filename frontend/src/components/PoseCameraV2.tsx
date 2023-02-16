@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import useWebSocket, { ReadyState } from 'react-native-use-websocket';
-import { Text, View } from 'react-native';
+import { Text, View, Image } from 'react-native';
 import { Camera, CameraType, FlashMode } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library'
 
 
 export default function PoseCamera() {
-  const [socketUrl] = useState("https://390c-86-8-102-74.eu.ngrok.io");
+  // const [socketUrl] = useState("https://390c-86-8-102-74.eu.ngrok.io");
+  const [socketUrl] = useState("ws://localhost:5000");
   const [hasCameraPermission, setHasCameraPermission] = useState(false)
+  const [frame, setFrame] = useState()
   const cameraRef = useRef();
   
   const {
@@ -55,15 +57,7 @@ export default function PoseCamera() {
 
   return (
     <View>
-      <Text>The WebSocket is currently {connectionStatus}</Text>
-      {/* {lastJsonMessage.data ? <Image source={lastJsonMessage.data}/> : null} */}
-      <Camera
-        ref={cameraRef}
-        style={{ flex: 1 }}
-        flashMode={FlashMode.off}
-        type={CameraType.back}
-        autoFocus={false}
-      />
+      <Image source={frame} style={{ flex: 1 }} />
     </View>
   );
 }

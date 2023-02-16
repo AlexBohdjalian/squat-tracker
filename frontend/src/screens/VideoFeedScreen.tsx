@@ -1,4 +1,3 @@
-// import axios from 'axios';
 import { StyleSheet } from 'react-native';
 import { View } from '../components/Themed';
 import { useState } from 'react';
@@ -7,9 +6,7 @@ import LocalCamera from '../components/LocalCamera';
 import Colors from '../../constants/Colors';
 import useColorScheme from '../../hooks/useColorScheme';
 import { RootTabScreenProps } from '../../types';
-// import * as HandDetector from '../../pose_estimation/HandDetection';
-// import PoseDetector from '../../pose_estimation/PoseNetDetector';
-import PoseCamera from '../components/PoseCamera';
+import PoseCamera from '../components/PoseCameraV3';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
   const [trackingForm, setTrackingForm] = useState(false);

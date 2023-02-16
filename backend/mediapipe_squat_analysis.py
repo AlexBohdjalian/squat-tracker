@@ -8,6 +8,18 @@ from mediapipe_estimator import MediaPipeDetector
 from squat_check import SquatFormAnalyzer
 
 
+def save_final_video(path, frames, fps):
+    f_shape = frames[0].shape
+    out = cv2.VideoWriter(
+        path,
+        cv2.VideoWriter_fourcc(*'mp4v'),
+        fps,
+        (f_shape[1], f_shape[0])
+    )
+    for frame in frames:
+        out.write(frame)
+    out.release()
+
 def draw_text(img, text,
           to_centre=False,
           font=cv2.FONT_HERSHEY_PLAIN,
@@ -256,6 +268,8 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
             squat_duration = round(time.time() - squat_start_time, 2)
 
         # Draw text with background
+        # # TODO: ME!
+        # add_details_to_frame(frame, [], show_output)
         box_len = 4
         if show_output:
             box_len = 5
@@ -333,6 +347,15 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
         print('No Ascent:\t', no_asc_reps)
         print('No Descent:\t', no_desc_reps)
         print('Unknown:\t', unknown_reps)
+
+        final_analysis = {
+            'good_reps': good_reps,
+            'poor_depth_reps': poor_depth_reps,
+            'poor_lockout_reps': poor_lockout_reps,
+            'no_asc_reps': no_asc_reps,
+            'no_desc_reps': no_desc_reps,
+            'unknown_reps': unknown_reps,
+        }
         # use data in squat_path, (save squat durations?), ...
         # produce graphs / summary e.g...
         # 5 good reps performed with tempos of ... indicating RPE of ...
@@ -346,31 +369,231 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
     if save_video:
         processed_video_path = f'{video_source[:-4]}_processed.mp4'
         print(f'Saving video to "{processed_video_path}" ...')
+        save_final_video(processed_video_path, frames, fps)
 
-        # Save video
-        f_shape = frames[0].shape
-        out = cv2.VideoWriter(
-            processed_video_path,
-            cv2.VideoWriter_fourcc(*'mp4v'),
-            fps,
-            (f_shape[1], f_shape[0])
-        )
-        for frame in frames:
-            out.write(frame)
-        out.release()
+        print('Done.\n')
+        return processed_video_path, final_analysis
 
     print('Done.\n')
 
-if __name__ == '__main__':
-    pose_detector = MediaPipeDetector()
-    form_analyser = SquatFormAnalyzer()
-    frame_stack = 2 # min 2 (for now, start and end frame is only used so this is best as 2)
-    frame_skip = 3
-    mp_drawing = mp.solutions.drawing_utils
-    mp_drawing_styles = mp.solutions.drawing_styles
-    mp_pose = mp.solutions.pose
-    text_colour = (219, 123, 3)
+def process_video_from_fe(video_source, frame_skip):
+    if video_source != 0:
+        print(f'Beginning "{video_source}" ...')
+        cap = FileVideoStream(video_source).start()
+        cap_stream = cap.stream
+    else:
+        print('LIVE CAMERA NOT ALLOWED')
+        return
 
+    # Get video capture and constants
+    start_time = time.time()
+    fps = cap_stream.get(cv2.CAP_PROP_FPS)
+    video_length = int(cap_stream.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
+    frame_width  = cap_stream.get(cv2.CAP_PROP_FRAME_WIDTH)
+    frame_height = cap_stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    
+    # Squat form constants
+    global good_form_colour, bad_form_colour
+    good_form_colour = text_colour
+    bad_form_colour = (0, 0, 255)
+    frame_stack = 2
+    
+    # Window dimensions
+    window_width = None
+    window_height = 500
+    aspect_dim = get_aspect_dim((frame_height, frame_width), window_width, window_height)
+
+    # Output video information
+    print(f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
+
+    # Initiate variables
+    frames = []
+    results_stack = []
+    rep_count = 0
+    squat_start_time = 0
+    squat_end_time = 0
+    prev_frame_time = 0
+    squat_details = ['Unsure', '', '', '', ''] # move this into squat_check and get via call. also use in determine_squat_stage()
+    squat_path = []
+    rep_indexes = []
+    form_analysis = 'No rep Performed'
+    form_text_colour = good_form_colour
+
+    # Begin loop
+    while True:
+        # Get the frame
+        if video_source != 0:
+            frame = cap.read()
+            if frame is None: # is this robust?
+                break
+        else:
+            success, frame = cap.read()
+            if not success:
+                break
+
+        # Process then send the data
+        pose_landmarks = pose_detector.make_prediction(frame)
+
+        if len(results_stack) > 0 and len(results_stack) % frame_stack == 0:
+            new_squat_details = form_analyser.analyse_landmark_stack(results_stack)
+            results_stack = []
+
+            if new_squat_details[0] != 'Unsure':
+                squat_details = new_squat_details
+
+                if len(squat_path) == 0:
+                    squat_path.append(squat_details[0])
+                elif squat_path[-1] != squat_details[0]:
+                    squat_path.append(squat_details[0])
+
+                    if len(squat_path) >= 2:
+                        form_text_colour, form_analysis, squat_start_time, squat_end_time = \
+                            update_states_based_on_squat_path(
+                            squat_path,
+                            form_text_colour,
+                            form_analysis,
+                            squat_start_time,
+                            squat_end_time,
+                            rep_indexes
+                        )
+
+                        # ONLY COUNT CLEAN REPS?
+                        if len(squat_path) >= 4 and squat_path[-4:] == ['Descending', 'Bottom', 'Ascending', 'Standing']:
+                            rep_count += 1
+
+        if pose_landmarks is None:
+            results_stack = []
+        elif len(frames) % (frame_skip + 1) == 0:
+            results_stack.append(pose_landmarks)
+
+        # Draw the pose annotation
+        mp_drawing.draw_landmarks(
+            frame,
+            pose_landmarks,
+            mp_pose.POSE_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+        )
+        
+        # Draw angles next to joints
+        if pose_landmarks is not None and squat_details[4] != '':
+            most_visible_hip_index = form_analyser.landmark_names[squat_details[4] + 'hip']
+            hip = pose_landmarks.landmark[most_visible_hip_index]
+
+            most_visible_knee_index = form_analyser.landmark_names[squat_details[4] + 'knee']
+            knee = pose_landmarks.landmark[most_visible_knee_index]
+
+            most_visible_ankle_index = form_analyser.landmark_names[squat_details[4] + 'ankle']
+            ankle = pose_landmarks.landmark[most_visible_ankle_index]
+
+            display_angle_at_joint(frame, ankle, squat_details[1])
+            display_angle_at_joint(frame, knee, squat_details[2])
+            display_angle_at_joint(frame, hip, squat_details[3])
+
+        if squat_end_time >= squat_start_time:
+            squat_duration = round(squat_end_time - squat_start_time, 2)
+        else:
+            squat_duration = round(time.time() - squat_start_time, 2)
+
+        # Draw text with background
+        box_len = 4
+        cv2.rectangle(frame, (0, 0), (frame.shape[0], 30+40*box_len), (0, 0, 0), -1)
+        cv2.putText(frame, squat_details[0], (5, 50), cv2.FONT_HERSHEY_PLAIN, 4, text_colour, 2)
+        cv2.putText(frame, 'Repetitions: ' + str(rep_count), (5, 90), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
+        cv2.putText(frame, 'Form: ' + form_analysis, (5, 130), cv2.FONT_HERSHEY_PLAIN, 2, form_text_colour, 2)
+
+        # Make this display live time, then pause while standing
+        cv2.putText(frame, 'Duration: ' + str(squat_duration) + 's', (5, 170), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
+
+        # TODO: Is the necessary?
+        # cv2.resize(frame, aspect_dim, cv2.INTER_AREA)
+
+        frames.append(frame)
+
+    cap_stream.release()
+    if video_source != 0:
+        cap.stop()
+    cv2.destroyAllWindows()
+
+    processed_time = time.time()
+    print(f'Video was processed in: {time.strftime("%Mm %Ss", time.gmtime(round(processed_time - start_time, 3)))}')
+
+    print('\n\033[36mProducing post-set analysis (NOT COMPLETE)...')
+    good_reps = 0
+    poor_depth_reps = 0
+    poor_lockout_reps = 0
+    no_asc_reps = 0
+    no_desc_reps = 0
+    unknown_reps = 0
+
+    squat_path = "".join([word[0] for word in squat_path])
+
+    reps = extract_reps_from_path(squat_path, rep_indexes)
+
+    # Check this num is correct
+    # print(f'In total there were {len(reps)} reps of varying quality detected')
+
+    for rep in reps:
+        if rep == 'DBAS':
+            good_reps += 1
+        elif rep == 'DAS':
+            poor_depth_reps += 1
+        elif rep == 'DBA':
+            poor_lockout_reps += 1
+        elif rep == 'DA':
+            poor_depth_reps += 1
+            poor_lockout_reps += 1
+        elif rep == 'BAS':
+            no_desc_reps += 1
+        elif rep == 'DBS':
+            no_asc_reps += 1
+        else:
+            print('Unknown rep sequence:', rep)
+            unknown_reps += 1
+
+    print('Good Reps:\t', good_reps)
+    print('Poor Depth:\t', poor_depth_reps)
+    print('Poor Lockout:\t', poor_lockout_reps)
+    print('No Ascent:\t', no_asc_reps)
+    print('No Descent:\t', no_desc_reps)
+    print('Unknown:\t', unknown_reps)
+
+    final_analysis = {
+        'good_reps': good_reps,
+        'poor_depth_reps': poor_depth_reps,
+        'poor_lockout_reps': poor_lockout_reps,
+        'no_asc_reps': no_asc_reps,
+        'no_desc_reps': no_desc_reps,
+        'unknown_reps': unknown_reps,
+    }
+    # use data in squat_path, (save squat durations?), ...
+    # produce graphs / summary e.g...
+    # 5 good reps performed with tempos of ... indicating RPE of ...
+    # 2 reps had poor depth at the bottom. try doing ... next time
+    # 1 rep had a poor lockout while standing...
+    # 1 rep did not register you descending, ensure the camera is in a good spot...
+    # No asymmetries detected in joint paths
+    # blah?
+    print('\033[0m')
+
+    processed_video_path = f'{video_source[:-4]}_processed.mp4'
+    print(f'Saving video to "{processed_video_path}" ...')
+    save_final_video(processed_video_path, frames, fps)
+
+    print('Done.\n')
+    
+    return processed_video_path, final_analysis
+
+
+pose_detector = MediaPipeDetector()
+form_analyser = SquatFormAnalyzer()
+frame_stack = 2 # min 2 (for now, start and end frame is only used so this is best as 2)
+frame_skip = 3
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
+mp_pose = mp.solutions.pose
+text_colour = (219, 123, 3)
+
+if __name__ == '__main__':
     videos = []
     videos.append("backend/assets/barbell_back_squat.mp4")
     # videos.append("backend/assets/barbell_front_squat.mp4")
