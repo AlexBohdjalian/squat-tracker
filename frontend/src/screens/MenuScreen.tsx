@@ -1,40 +1,51 @@
-import { useState } from 'react';
-import { StyleSheet, Modal, ActivityIndicator, SafeAreaView } from 'react-native';
-import { Video } from 'expo-av';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Modal, ActivityIndicator, Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import Button from '../components/Button';
 import { Text, View } from '../components/Themed';
 import { RootTabScreenProps } from '../../types';
-import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 
+enum ModalStates {
+  NOT_VISIBLE = 'not-visible',
+  PROCESSING = 'processing',
+  SAVING = 'saving',
+  DONE = 'done',
+}
 
 export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
-  const [modalState, setModalState] = useState<'NOT_VISIBLE'|'PROCESSING'|'SAVING'|'DONE'>('NOT_VISIBLE');
+  const [modalState, setModalState] = useState<ModalStates>(ModalStates.NOT_VISIBLE);
   const [savedVideoUri, setSavedVideoUri] = useState('');
-  const [displaySavedVideo, setDisplaySavedVideo] = useState(false);
   const [squatFormData, setSquatFormData] = useState();
 
-  const getModalText = (state) => {
-    if (state == 'PROCESSING') {
+  // useEffect that asks for MediaLibrary permissions once at the start
+  useEffect(() => {
+    (async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Sorry, we need camera roll permissions to make this work!');
+      }
+    })();
+  }, []);
+
+  const getModalText = (state: ModalStates) => {
+    if (state == ModalStates.PROCESSING) {
       return 'Video is being processed'
     }
-    if (state == 'SAVING') {
+    if (state == ModalStates.SAVING) {
       return 'Processed video is being saved'
     }
-    if (state == 'DONE') {
+    if (state == ModalStates.DONE) {
       return 'Done'
     }
   }
 
-  const openSavedVideo = async () => {
-    setModalState('NOT_VISIBLE')
-    
-    if (savedVideoUri != '') {
-      console.log('Opening: ' + savedVideoUri)
-      
-      setDisplaySavedVideo(true)
+  const handleSeeVideo = () => {
+    setModalState(ModalStates.NOT_VISIBLE);
+    if (savedVideoUri && squatFormData) {
+      navigation.navigate('FormReview', { videoUri: savedVideoUri, formData: squatFormData });
     }
   }
 
@@ -49,7 +60,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
       });
 
       if (!result.canceled) {
-        setModalState('PROCESSING')
+        setModalState(ModalStates.PROCESSING)
 
         const base64VideoData = await FileSystem.readAsStringAsync(result.assets[0].uri, {
           encoding: FileSystem.EncodingType.Base64,
@@ -57,24 +68,35 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
 
         try {
           // think about what data should be received and how to display
+          // TODO: consider using filestream here to improve speed
+          // TODO: or, use this https://narainsreehith.medium.com/upload-image-video-to-flask-backend-from-react-native-app-expo-app-1aac5653d344
           const { data } = await axios.post('http://192.168.0.28:5000/process_video', {
             'video': base64VideoData
           });
           const videoData = data['video']
           setSquatFormData(data['analysis'])
 
-          setModalState('SAVING');
+          setModalState(ModalStates.SAVING);
           // Save the received video (video_data)
           const fileUri = FileSystem.documentDirectory + 'received_video.mp4';
           FileSystem.writeAsStringAsync(fileUri, videoData, {
             encoding: FileSystem.EncodingType.Base64,
           });
 
+          // save this to an asset album e.g. 'SquatTracker'
           const asset = await MediaLibrary.createAssetAsync(fileUri);
-          setSavedVideoUri(asset.uri);
-          setModalState('DONE');
+          if (Platform.OS === 'ios') {
+            const hash = asset.id.split('/')[0];
+            const videoUri = `assets-library://asset/asset.mp4?id=${hash}&ext=mp4`;
+            setModalState(ModalStates.DONE);
+            setSavedVideoUri(videoUri);
+          } else {
+            const videoUri = asset.uri;
+            setModalState(ModalStates.DONE);
+            setSavedVideoUri(videoUri);
+          }
         } catch (e) {
-          setModalState('NOT_VISIBLE') // change this to error // also change modal to be component
+          setModalState(ModalStates.NOT_VISIBLE) // change this to error // also change modal to be component
           console.warn(e);
         }
       }
@@ -104,36 +126,15 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
         </View>
       </View>
       <Modal
-      animationType='slide'
-        transparent={true}
-        visible={displaySavedVideo}
-      >
-        <View style={styles.videoModalView}>
-          <Video
-            source={{ uri: savedVideoUri }}
-            style={{ width: '100%', height: '85%' }}
-            rate={1.0}
-            isMuted={true}
-            shouldPlay
-            isLooping
-          />
-          <Text>{JSON.stringify(squatFormData)}</Text>
-          <Button
-            title="Close Video"
-            onPress={() => setDisplaySavedVideo(false)}
-          />
-        </View>
-      </Modal>
-      <Modal
         animationType='slide'
         transparent={true}
-        visible={modalState != 'NOT_VISIBLE'}
-        onRequestClose={() => setModalState('NOT_VISIBLE')}
+        visible={modalState != ModalStates.NOT_VISIBLE}
+        onRequestClose={() => setModalState(ModalStates.NOT_VISIBLE)}
       >
         <View style={styles.modalView}>
           <Text style={styles.modalText}>{getModalText(modalState)}</Text>
-          { modalState == 'DONE' ? (
-            <Button title="See Video" onPress={openSavedVideo}/>
+          {modalState == ModalStates.DONE? (
+            <Button title="See Video" onPress={handleSeeVideo} />
           ) : (
             <ActivityIndicator size={'small'} />
           )}

@@ -18,6 +18,7 @@ export type RootStackParamList = {
   AppInfo: undefined;
   NotFound: undefined;
   VideoFeed: undefined;
+  FormReview: { videoUri: string, formData: any };
 };
 
 export type RootStackScreenProps<Screen extends keyof RootStackParamList> = NativeStackScreenProps<
@@ -28,8 +29,9 @@ export type RootStackScreenProps<Screen extends keyof RootStackParamList> = Nati
 export type RootTabParamList = {
   Menu: undefined;
   Settings: undefined;
-  VideoFeed: undefined;
   AppInfo: undefined;
+  VideoFeed: undefined;
+  FormReview: { videoUri: string, formData: any };
 };
 
 export type RootTabScreenProps<Screen extends keyof RootTabParamList> = CompositeScreenProps<

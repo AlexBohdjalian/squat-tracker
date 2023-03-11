@@ -1,34 +1,24 @@
 import flask
 import cv2
 import base64
-import json
 import os
 import numpy as np
 import time
-from mediapipe_squat_analysis import process_video_from_fe
-
+from squat_analysis_be_v2 import process_video_from_fe, process_frame_from_fe
 
 
 app = flask.Flask(__name__)
 
 @app.route('/process_frame', methods=['POST'])
 def process_frame():
-    print('Receiving data...')
-    s = time.time()
     frame_data = base64.b64decode(flask.request.json['frame'])
-    print('Data received...')
 
-    np_arr =  np.fromstring(frame_data, np.uint8)
+    np_arr =  np.frombuffer(frame_data, np.uint8)
     frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    processed_frame = frame#some_function(frame)
-    _, encoded_frame = cv2.imencode('.jpg', processed_frame)
-    print(time.time() - s)
+    
+    form_feedback = process_frame_from_fe(frame)
 
-    cv2.imshow('frame', frame)
-    cv2.waitKey(2000)
-
-
-    return 'done'
+    return form_feedback
 
 
 @app.route('/process_video', methods=['POST'])
@@ -49,12 +39,13 @@ def process_video():
         fw.write(base64.b64decode(video_data))
 
     # TODO: create a new function which does everything needed (efficiently in this context), that then returns the raw data to be sent to the app
-    processed_video_path, form_analysis = process_video_from_fe(file_path, frame_skip)
+    processed_video_path, form_analysis = process_video_from_fe(file_path)
 
     with open(processed_video_path, 'rb') as fr:
         processed_video_data = fr.read()
 
-    os.remove('tmp/video.mp4')
+    os.remove(file_path)
+    os.remove(processed_video_path)
 
     return {
         'video': base64.b64encode(processed_video_data).decode('utf-8'),
@@ -64,4 +55,6 @@ def process_video():
 
 if __name__ == '__main__':
     frame_skip = 3
+    # TODO: implement threading for multiple client connections (if flask doesn't already do that)
     app.run(host='192.168.0.28', port=5000)
+    

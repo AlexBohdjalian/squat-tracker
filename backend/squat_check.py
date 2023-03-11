@@ -121,6 +121,8 @@ class SquatFormAnalyzer():
         ] for landmark_name in landmarks]
 
     def analyse_landmark_stack(self, pose_landmarks_stack):
+        # TODO: https://learnopencv.com/ai-fitness-trainer-using-mediapipe/, use this to determine feedback based on angles
+
         # this needs to vary with frame stack size
         moving_threshold = 0.01 # move to __init__
         start_head_height = self.get_landmarks(pose_landmarks_stack[0], ['nose'])[0][1]

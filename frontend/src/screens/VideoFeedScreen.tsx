@@ -6,7 +6,9 @@ import LocalCamera from '../components/LocalCamera';
 import Colors from '../../constants/Colors';
 import useColorScheme from '../../hooks/useColorScheme';
 import { RootTabScreenProps } from '../../types';
-import PoseCamera from '../components/PoseCameraV3';
+// import PoseCameraRNVC from '../components/LiveAnalysis_RNVisionCamera';
+// import PoseCameraExpo from '../components/LiveAnalysis_ExpoCamera';
+import PoseCameraRTMP from '../components/LiveAnalysis_RTMPStream';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
   const [trackingForm, setTrackingForm] = useState(false);
@@ -15,10 +17,12 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
   if (trackingForm) {
     return (
       <View style={styles.container}>
-        <PoseCamera />
+        {/* <PoseCameraRNVC /> This one doesn't work with expo :( */}
+        {/* <PoseCameraExpo /> */}
+        <PoseCameraRTMP />
         <View style={styles.trackingToggle}>
           <CameraButton
-            title={'Stop Tacking'}
+            title={'Stop Tracking'}
             icon="stop"
             color={Colors[scheme].text}
             onPress={() => setTrackingForm(false)}
@@ -47,7 +51,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 5,
+    paddingBottom: 20,
   },
   trackingToggle: {
 

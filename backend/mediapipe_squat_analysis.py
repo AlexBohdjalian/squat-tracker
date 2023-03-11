@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import time
-from enum import Enum
 import mediapipe as mp
 from imutils.video import FileVideoStream
 from mediapipe_estimator import MediaPipeDetector
@@ -376,13 +375,15 @@ def process_data(video_source, frame_stack, frame_skip, show_output, post_analys
 
     print('Done.\n')
 
-def process_video_from_fe(video_source, frame_skip):
+def process_video_from_fe(video_source, frame_skip, show_console_output=False):
     if video_source != 0:
-        print(f'Beginning "{video_source}" ...')
+        if show_console_output:
+            print(f'Beginning "{video_source}" ...')
         cap = FileVideoStream(video_source).start()
         cap_stream = cap.stream
     else:
-        print('LIVE CAMERA NOT ALLOWED')
+        if show_console_output:
+            print('LIVE CAMERA NOT ALLOWED')
         return
 
     # Get video capture and constants
@@ -404,7 +405,8 @@ def process_video_from_fe(video_source, frame_skip):
     aspect_dim = get_aspect_dim((frame_height, frame_width), window_width, window_height)
 
     # Output video information
-    print(f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
+    if show_console_output:
+        print(f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
 
     # Initiate variables
     frames = []
@@ -505,7 +507,7 @@ def process_video_from_fe(video_source, frame_skip):
         cv2.putText(frame, 'Duration: ' + str(squat_duration) + 's', (5, 170), cv2.FONT_HERSHEY_PLAIN, 2, text_colour, 2)
 
         # TODO: Is the necessary?
-        # cv2.resize(frame, aspect_dim, cv2.INTER_AREA)
+        cv2.resize(frame, aspect_dim, cv2.INTER_AREA)
 
         frames.append(frame)
 
@@ -515,9 +517,10 @@ def process_video_from_fe(video_source, frame_skip):
     cv2.destroyAllWindows()
 
     processed_time = time.time()
-    print(f'Video was processed in: {time.strftime("%Mm %Ss", time.gmtime(round(processed_time - start_time, 3)))}')
+    if show_console_output:
+        print(f'Video was processed in: {time.strftime("%Mm %Ss", time.gmtime(round(processed_time - start_time, 3)))}')
 
-    print('\n\033[36mProducing post-set analysis (NOT COMPLETE)...')
+        print('\n\033[36mProducing post-set analysis (NOT COMPLETE)...')
     good_reps = 0
     poor_depth_reps = 0
     poor_lockout_reps = 0
@@ -550,12 +553,26 @@ def process_video_from_fe(video_source, frame_skip):
             print('Unknown rep sequence:', rep)
             unknown_reps += 1
 
-    print('Good Reps:\t', good_reps)
-    print('Poor Depth:\t', poor_depth_reps)
-    print('Poor Lockout:\t', poor_lockout_reps)
-    print('No Ascent:\t', no_asc_reps)
-    print('No Descent:\t', no_desc_reps)
-    print('Unknown:\t', unknown_reps)
+    if show_console_output:
+        print('Good Reps:\t', good_reps)
+        print('Poor Depth:\t', poor_depth_reps)
+        print('Poor Lockout:\t', poor_lockout_reps)
+        print('No Ascent:\t', no_asc_reps)
+        print('No Descent:\t', no_desc_reps)
+        print('Unknown:\t', unknown_reps)
+        print('\033[0m')
+
+    # TODO: see https://github.com/Pradnya1208/Squats-angle-detection-using-OpenCV-and-mediapipe_v1/blob/main/Squat%20pose%20estimation.ipynb
+        # for other calculations (also below)
+    # TODO: below
+    # Range of motion
+    # Partial squat (0-40 degrees knee angle)
+    # Parallel squat (hips parallel to knees or 70-100 degrees knee angle)
+    # Deep squat (full range or >100 degrees knee angle)
+
+    # ref: https://www.raynersmale.com/blog/2014/1/31/optimising-your-squat
+    # TODO: Toque calculation: https://squatuniversity.com/2016/04/20/the-real-science-of-the-squat/
+    # Todo: angles: Trunk angle, Shank angle Thigh segment angle Ankle segment angle ref: https://www.quinticsports.com/squatting_technique/
 
     final_analysis = {
         'good_reps': good_reps,
@@ -573,10 +590,10 @@ def process_video_from_fe(video_source, frame_skip):
     # 1 rep did not register you descending, ensure the camera is in a good spot...
     # No asymmetries detected in joint paths
     # blah?
-    print('\033[0m')
 
     processed_video_path = f'{video_source[:-4]}_processed.mp4'
-    print(f'Saving video to "{processed_video_path}" ...')
+    if show_console_output:
+        print(f'Saving video to "{processed_video_path}" ...')
     save_final_video(processed_video_path, frames, fps)
 
     print('Done.\n')

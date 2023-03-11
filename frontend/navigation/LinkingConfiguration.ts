@@ -27,12 +27,13 @@ const linking: LinkingOptions<RootStackParamList> = {
           },
           VideoFeed: {
             screens: {
-              VideoFeedScreen: 'videoFeed'
+              VideoFeedScreen: 'videoFeed',
             }
-          }
+          },
         },
       },
       AppInfo: 'appInfo',
+      FormReview: 'formReview',
       NotFound: '*',
     },
   },
