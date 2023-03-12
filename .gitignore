@@ -13,6 +13,7 @@ web-build/
 __pycache__/
 *.py[cod]
 *_processed.mp4
+frontend_ejected/
 
 # macOS
 .DS_Store
