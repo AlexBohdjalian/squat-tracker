@@ -19,7 +19,6 @@ export interface ISettingsState {
   resolution: Resolution;
   framerate: number;
   videoBitrate: number;
-  audioBitrate: number;
   rtmpEndpoint: string;
   streamKey: string;
 }
@@ -37,8 +36,7 @@ export default function App() {
   const [settings, setSettings] = useState<ISettingsState>({
     resolution: '720p',
     framerate: 10,
-    videoBitrate: 700,
-    audioBitrate: 0,
+    videoBitrate: 2000,
     rtmpEndpoint: 'rtmp://192.168.0.28:1935/form_analyser',
     streamKey: '22022001',
   });

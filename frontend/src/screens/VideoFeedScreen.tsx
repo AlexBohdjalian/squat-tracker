@@ -9,8 +9,11 @@ import { RootTabScreenProps } from '../../types';
 // import PoseCameraRNVC from '../components/LiveAnalysis_RNVisionCamera';
 // import PoseCameraExpo from '../components/LiveAnalysis_ExpoCamera';
 import PoseCameraRTMP from '../components/LiveAnalysis_RTMPStream';
+// import PoseCameraNMC from '../components/LiveAnalysis_NodeMediaClient';
 
 export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'VideoFeed'>) {
+  return <PoseCameraRTMP />;
+  
   const [trackingForm, setTrackingForm] = useState(false);
   const scheme = useColorScheme();
 
@@ -20,6 +23,7 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
         {/* <PoseCameraRNVC /> */}
         {/* <PoseCameraExpo /> */}
         <PoseCameraRTMP />
+        {/* <PoseCameraNMC /> */}
         <View style={styles.trackingToggle}>
           <CameraButton
             title={'Stop Tracking'}
