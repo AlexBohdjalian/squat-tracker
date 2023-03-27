@@ -21,6 +21,9 @@ if not cap.isOpened():
     proc1.kill()
     exit()
 
+# TODO: implement pose estimation using a macbook app and compare the stats
+    # explaining why this approach is limited but necessary
+
 while True:
     # SET MODEL COMPLEXITY TO 0
     # immediate_form_feedback, suc = process_live_video_from_fe(
