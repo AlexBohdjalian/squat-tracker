@@ -113,7 +113,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
         <View style={styles.buttonsContainer}>
           <Button
             onPress={() => navigation.navigate('VideoFeed')}
-            title="Go To Live Squat Tracker (NOT WORKING YET)"
+            title="Go To Live Squat Tracker"
           />
           <Button
             onPress={selectAndProcessVideo}
@@ -121,7 +121,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
           />
           <Button
             onPress={() => {}} // TODO: this
-            title="See Previous Lifts (NOT WORKING YET)"
+            title="See Previous Lifts"
           />
         </View>
       </View>

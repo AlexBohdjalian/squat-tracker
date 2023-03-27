@@ -17,7 +17,7 @@ export default function VideoFeedScreen({ navigation }: RootTabScreenProps<'Vide
   if (trackingForm) {
     return (
       <View style={styles.container}>
-        {/* <PoseCameraRNVC /> This one doesn't work with expo :( */}
+        {/* <PoseCameraRNVC /> */}
         {/* <PoseCameraExpo /> */}
         <PoseCameraRTMP />
         <View style={styles.trackingToggle}>

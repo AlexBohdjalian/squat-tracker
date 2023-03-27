@@ -83,6 +83,17 @@ def extract_reps_from_path(path, indexes):
             reps.append(path[start:end+1])
     return reps
 
+def process_live_video_from_fe(cap, show_output=False):
+    suc, frame = cap.read()
+    if not suc:
+        return 'Video End', suc
+
+    if show_output:
+        cv2.imshow('Frame from fe', frame)
+        cv2.waitKey(1)
+
+    return 'No Feedback available', suc
+
 def process_frame_from_fe(frame):
     s = time.time()
     pose_landmarks = pose_detector.make_prediction(frame)
@@ -106,8 +117,6 @@ def process_video_from_fe(video_source):
     global good_form_colour, bad_form_colour
     good_form_colour = text_colour
     bad_form_colour = (0, 0, 255)
-    frame_stack = 2
-    perfect_sequence = ['Standing', 'Transition', 'Bottom']
     most_visible_side = ''
     form_thresholds_beginner = {
         'ankle': 45, # max angle  # currently unused

@@ -1,18 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Camera, useFrameProcessor, useCameraDevices, CameraPosition, Frame } from 'react-native-vision-camera';
-import { Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  Camera,
+  useFrameProcessor,
+  useCameraDevices,
+  CameraPosition,
+  Frame
+} from 'react-native-vision-camera';
+import { Text, View } from 'react-native';
+import 'react-native-reanimated';
 
 const SERVER_URL = 'http://192.168.0.28:5000/process_frame';
 
 export default function PoseCameraRNVC() {
-  const [formFeedback, setFormFeedback] = useState('');
+  const [formFeedback, setFormFeedback] = useState('No Feedback Yet');
   const [cameraPosition, setCameraPosition] = useState<CameraPosition>('back');
   const devices = useCameraDevices();
   const device = devices[cameraPosition];
 
   useEffect(() => {
     (async () => {
-      const status = await Camera.requestCameraPermission();
+      const status = await Camera .requestCameraPermission();
       if (status !== 'authorized') {
         alert('Permission to access camera is required!');
         return;
@@ -36,6 +43,8 @@ export default function PoseCameraRNVC() {
   };
 
   const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    setFormFeedback('Handling Frame, time: ' + Date.now());
     handleCameraFrame(frame);
   }, []);
 
@@ -47,14 +56,22 @@ export default function PoseCameraRNVC() {
   //   }
   // };
 
+  if (!device) {
+    return (
+      <Text>Loading...</Text>
+    )
+  }
+
   return (
-    <Camera
-      device={device}
-      isActive={true}
-      frameProcessor={frameProcessor}
-      frameProcessorFps={1} // default to 1 for now.
-    >
-      <Text>{formFeedback}</Text>
-    </Camera>
+    <View style={{flex: 1}}>
+      <Camera
+        style={{ flex: 1 }}
+        device={device}
+        isActive={true}
+        frameProcessor={frameProcessor}
+        frameProcessorFps={0.5} // default to 1 for now.
+      />
+      <Text style={{textAlign:'center', fontSize: 18}}>{formFeedback}</Text>
+    </View>
   );
 }
