@@ -14,6 +14,7 @@ import {
 } from '@api.video/react-native-livestream';
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles, { button } from '../styles/LiveAnalysis_RTMPStreamStyle';
+import io from 'socket.io-client';
 
 export interface ISettingsState {
   resolution: Resolution;
@@ -23,6 +24,9 @@ export interface ISettingsState {
   streamKey: string;
 }
 
+const ip = '192.168.0.28';
+const SERVER_URL = `http://${ip}:8080`;
+
 export default function App() {
   // LOCAL STATE
   // Stream view
@@ -31,13 +35,14 @@ export default function App() {
   const [warning, setWarning] = useState<{
     display: boolean;
     message: string;
-  }>({ display: false, message: '' })
+  }>({ display: false, message: '' });
+  const [formFeedback, setFormFeedback] = useState<string>('');
 
   const [settings, setSettings] = useState<ISettingsState>({
     resolution: '720p',
     framerate: 10,
     videoBitrate: 2000,
-    rtmpEndpoint: 'rtmp://192.168.0.28:1935/form_analyser',
+    rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
   });
 

@@ -88,19 +88,31 @@ def process_live_video_from_fe(cap, show_output=False):
     if not suc:
         return 'Video End', suc
 
+    feedback, pose_landmarks = process_frame_from_fe(frame)
+
+    if feedback is None:
+        return 'No Landmarks Detected', suc
+
     if show_output:
-        cv2.imshow('Frame from fe', frame)
+        mp_drawing.draw_landmarks(
+            frame,
+            pose_landmarks,
+            mp_pose.POSE_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+        )
+        frame = cv2.resize(frame, (360, 640))
+        cv2.imshow('Live Stream', frame)
         cv2.waitKey(1)
 
-    return 'No Feedback available', suc
+    return feedback, suc
 
 def process_frame_from_fe(frame):
     s = time.time()
     pose_landmarks = pose_detector.make_prediction(frame)
     if pose_landmarks is None:
-        return 'No landmarks detected'
+        return None, []
 
-    return 'Landmarks detected in: ' + str(time.time() - s)
+    return 'Landmarks detected in: ' + str(time.time() - s), pose_landmarks
 
 def process_video_from_fe(video_source):
     # Guard against invalid video source
