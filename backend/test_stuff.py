@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import squat_analyser as sa2
 import cv2
@@ -5,16 +6,19 @@ import cv2
 form_analyser = sa2.SquatFormAnalyser()
 
 videos = [
-    # 'backend/assets/goblet_squat.mp4',
-    # 'backend/assets/barbell_back_squat.mp4',
-    # 'backend/assets/barbell_front_squat.mp4',
+    'backend/assets/goblet_squat.mp4',
+    'backend/assets/barbell_back_squat.mp4',
+    'backend/assets/barbell_front_squat.mp4',
     'backend/assets/dan_squat.mp4',
     'backend/assets/me_squat.mp4',
 ]
 
 for vid in videos:
+    print('Assessing: ' + vid)
+    process_start_time = time.time()
     cap = cv2.VideoCapture(vid)
 
+    feedback_received = 0
     prev_f = ''
     all_f = []
     while True:
@@ -27,79 +31,26 @@ for vid in videos:
             if len(f) > 0 and f != ['Not Detected'] and f != ['Insufficient Joint Data']:
                 print(f)
                 all_f.append(f)
+            feedback_received = time.time()
+        elif time.time() - feedback_received > 5000:
+            
+            feedback_received = time.time()
 
-    print(all_f)
+    end_time = time.time()
+
     if len(all_f) == 0:
         print('No Problems Found In Form')
     else:
-        print('Some problems were found:', np.unique(all_f))
+        flat = []
+        for f in all_f:
+            for i in f:
+                flat.append(i)
+        print('\nSome problems were found:')
+        print(np.unique(flat))
 
-
-[
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 117 and should be less than 100'
-    ],
-    ['Bend Backwards'],
-    ['Bend Backwards'],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 138 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 173 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 171 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 177 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 164 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 169 and should be less than 100'
-    ],
-    [
-        'Bend Backwards'],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 112 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 100 and should be less than 100'
-    ],
-    ['Bend Backwards'],
-    ['Bend Backwards',
-    'Incorrect Posture. Knee angle is: 127 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 119 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 138 and should be less than 100'
-    ],
-    ['Bend Backwards'],
-    ['Bend Backwards'],
-    ['Bend Backwards'],
-    ['Bend Backwards'],
-    ['Bend Backwards'],
-    ['Bend Backwards'],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 120 and should be less than 100'
-    ],
-    [
-        'Bend Backwards',
-        'Incorrect Posture. Knee angle is: 117 and should be less than 100'
-    ]
-]
+    if vid != 0:
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        video_length = cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS)
+        print(f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}')
+    print('Video Processed in:', time.strftime('%Mm %Ss', time.gmtime(end_time - process_start_time)))
+    print()

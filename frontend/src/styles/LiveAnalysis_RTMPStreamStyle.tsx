@@ -7,6 +7,20 @@ export default (streaming: boolean, android: boolean, warning: boolean) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
+    formFeedbackContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'white',
+      padding: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    formFeedbackText: {
+      color: 'black',
+      fontSize: 16,
+    },       
     livestreamView: {
       flex: 1,
       backgroundColor: 'black',

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -25,7 +26,8 @@ export interface ISettingsState {
 }
 
 const ip = '192.168.0.28';
-const SERVER_URL = `http://${ip}:8080`;
+const RTMP_SERVER_URL = `http://${ip}:8080`;
+const FEEDBACK_URL = `http://${ip}:5000`;
 
 export default function App() {
   // LOCAL STATE
@@ -71,6 +73,29 @@ export default function App() {
   //     useNativeDriver: false,
   //   }).start();
   // };
+
+  const fetchFormFeedback = async () => {
+    try {
+      const response = await axios.get(`${FEEDBACK_URL}/form-feedback`);
+      const data = response.data;
+      setFormFeedback(data.join(', '));
+    } catch (error) {
+      console.error('Error fetching form feedback:', error);
+    }
+  };
+
+  // Call the fetchFormFeedback function every 3 seconds when the streaming is on
+  useEffect(() => {
+    if (streaming) {
+      const intervalId = setInterval(() => {
+        fetchFormFeedback();
+      }, 1000);
+  
+      return () => {
+        clearInterval(intervalId);
+      };
+    }
+  }, [streaming]);
 
   const handleStreaming = (): void => {
     // Reset warning
@@ -131,6 +156,7 @@ export default function App() {
         enablePinchedZoom={true}
         onConnectionSuccess={() => {
           console.log('Received onConnectionSuccess');
+          setFormFeedback('');
         }}
         onConnectionFailed={(reason: string) => {
           console.log('Received onConnectionFailed: ' + reason);
@@ -139,6 +165,7 @@ export default function App() {
         onDisconnect={() => {
           console.log('Received onDisconnect');
           setStreaming(false);
+          setFormFeedback('');
         }}
       />
 
@@ -170,6 +197,12 @@ export default function App() {
             </View>
           )}
         </Animated.View>
+      )}
+
+      {formFeedback !== '' && (
+        <View style={style.formFeedbackContainer}>
+          <Text style={style.formFeedbackText}>{formFeedback}</Text>
+        </View>
       )}
     </View>
   );

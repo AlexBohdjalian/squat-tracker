@@ -1,8 +1,7 @@
 import cv2
-import numpy as np
 import time
 import mediapipe as mp
-from imutils.video import FileVideoStream
+# from imutils.video import FileVideoStream
 from mediapipe_estimator import MediaPipeDetector
 from squat_check_v2 import SquatFormAnalyzer
 
@@ -30,8 +29,8 @@ class SquatFormAnalyser():
             'ankle': 30, # currently unused
             'knee': (50, 80, 100), 
             'hip': (15, 50),
-            'shoulder_level': 10,
-            'hip_level': 10,
+            'shoulder_level': 5,
+            'hip_level': 5,
         }
         self.form_thresholds = self.form_thresholds_advanced
         self.reps = []
@@ -129,28 +128,29 @@ class SquatFormAnalyser():
             if self.form_thresholds['knee'][0] < knee_vertical_angle < self.form_thresholds['knee'][1] and \
                 self.state_sequence.count('s2') == 1:
                 self.current_form_text.append('Lower Hips')
-            elif knee_vertical_angle >= self.form_thresholds['knee'][2]:
+            elif knee_vertical_angle > self.form_thresholds['knee'][2]:
                 # 'Deep Squat'
                 limit = self.form_thresholds['knee'][2]
                 current_form_text.append(f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {limit}')
 
         # Determine if hips/shoulders are level
-        left_shoulder, right_shoulder, left_hip, right_hip = self.form_analyser.get_landmarks(
+        if not self.form_analyser.check_joints_are_level(
             pose_landmarks,
-            ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']
-        )
-        if not self.is_level(left_shoulder, right_shoulder, self.form_thresholds['shoulder_level']):
-            current_form_text.append('Shoulders are not level')
-        if not self.is_level(left_hip, right_hip, self.form_thresholds['hip_level']):
-            current_form_text.append('Hips are not level')
+            'shoulder',
+            self.form_thresholds['shoulder_level']
+        ):
+            current_form_text.append(f'Shoulders are not level')
+        if not self.form_analyser.check_joints_are_level(
+            pose_landmarks,
+            'hip',
+            self.form_thresholds['hip_level']
+        ):
+            current_form_text.append(f'Hips are not level')
 
         if self.squat_end_time < self.squat_start_time:
             self.squat_duration = round(time.time() - self.squat_start_time, 2)
 
         return current_form_text, pose_landmarks
-
-    def is_level(self, point1, point2, threshold):
-        return abs(point1[1] - point2[1]) <= threshold
 
     def draw_text(self, img, text,
         to_centre=False,

@@ -2,6 +2,8 @@ import time
 import subprocess
 import cv2
 import socket
+from flask import Flask, jsonify
+from threading import Thread
 import squat_analyser as sa2
 
 
@@ -23,10 +25,26 @@ cap = cv2.VideoCapture()
 # Create analysis object
 form_analyser = sa2.SquatFormAnalyser()
 
-input('Press Enter to begin...')
+app = Flask(__name__)
+feedback = []
+
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
+@app.route('/form-feedback', methods=['GET'])
+def get_form_feedback():
+    global feedback
+    return jsonify(feedback)
+
+def run_flask_app():
+    app.run(host=ip, port=5000)
+
+flask_thread = Thread(target=run_flask_app)
+flask_thread.start()
 
 # Begin forwarding rtmp stream to a local endpoint
-proc1 = subprocess.Popen(ffmpeg_args)
+proc1 = subprocess.Popen(ffmpeg_args, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 time.sleep(5)
 
 # Read the local rtmp stream
@@ -41,27 +59,21 @@ if not cap.isOpened():
     # thread1 grabs frame if prev frame is processed or empty
     # thread2 processes frame
 
-prev_f = ''
+prev_f = []
 while True:
     # Process the frame
     immediate_f, suc = form_analyser.analyse(
         cap,
-        show_output=True
+        show_output=False
     )
-    # immediate_form_feedback, suc = process_live_video_from_fe(
-    #     cap,
-    #     show_output=True
-    # )
     if not suc:
         break
 
     if prev_f != immediate_f:
-        prev_f = immediate_f
         if len(immediate_f) > 0 and immediate_f != ['Not Detected'] and immediate_f != ['Insufficient Joint Data']:
             print('Form Feedback:', immediate_f)
 
-        # TODO: Send the feedback back to the client
-        # send form feedback
+        feedback = immediate_f
         prev_f = immediate_f
 
 
