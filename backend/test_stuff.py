@@ -6,23 +6,23 @@ import cv2
 form_analyser = sa2.SquatFormAnalyser()
 
 videos = [
-    'backend/assets/goblet_squat.mp4',
-    'backend/assets/barbell_back_squat.mp4',
-    'backend/assets/barbell_front_squat.mp4',
-    'backend/assets/dan_squat.mp4',
-    'backend/assets/me_squat.mp4',
+    0
+    # 'backend/assets/goblet_squat.mp4',
+    # 'backend/assets/barbell_back_squat.mp4',
+    # 'backend/assets/barbell_front_squat.mp4',
+    # 'backend/assets/dan_squat.mp4',
+    # 'backend/assets/me_squat.mp4',
 ]
 
 for vid in videos:
-    print('Assessing: ' + vid)
+    print('Assessing:', vid)
     process_start_time = time.time()
     cap = cv2.VideoCapture(vid)
 
-    feedback_received = 0
     prev_f = ''
     all_f = []
     while True:
-        f, suc = form_analyser.analyse(cap, False)
+        f, suc = form_analyser.analyse(cap, True)
         if not suc:
             break
 
@@ -31,10 +31,6 @@ for vid in videos:
             if len(f) > 0 and f != ['Not Detected'] and f != ['Insufficient Joint Data']:
                 print(f)
                 all_f.append(f)
-            feedback_received = time.time()
-        elif time.time() - feedback_received > 5000:
-            
-            feedback_received = time.time()
 
     end_time = time.time()
 

@@ -29,8 +29,8 @@ class SquatFormAnalyser():
             'ankle': 30, # currently unused
             'knee': (50, 80, 100), 
             'hip': (15, 50),
-            'shoulder_level': 5,
-            'hip_level': 5,
+            'shoulder_level': 0.05,
+            'hip_level': 0.05,
         }
         self.form_thresholds = self.form_thresholds_advanced
         self.reps = []
@@ -120,6 +120,7 @@ class SquatFormAnalyser():
             hip_vertical_angle = round(hip_vertical_angle)
             if hip_vertical_angle > self.form_thresholds['hip'][1]:
                 current_form_text.append('Bend Backwards')
+            # TODO: fix this
             # elif hip_vertical_angle > self.form_thresholds['hip'][0]:
             #     current_form_text.append('Bend Forward')
 
