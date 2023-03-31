@@ -14,7 +14,7 @@ import {
 } from '@api.video/react-native-livestream';
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles, { button } from '../styles/LiveAnalysis_RTMPStreamStyle';
-import io from 'socket.io-client';
+
 
 export interface ISettingsState {
   resolution: Resolution;
@@ -41,7 +41,7 @@ export default function App() {
   const [settings, setSettings] = useState<ISettingsState>({
     resolution: '720p',
     framerate: 10,
-    videoBitrate: 2000,
+    videoBitrate: 1400,
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
   });
@@ -126,6 +126,7 @@ export default function App() {
           fps: settings.framerate,
           resolution: settings.resolution,
         }}
+        audio={{ bitrate: 0 }}
         isMuted={true}
         enablePinchedZoom={true}
         onConnectionSuccess={() => {
