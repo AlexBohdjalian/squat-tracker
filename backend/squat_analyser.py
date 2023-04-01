@@ -83,6 +83,9 @@ class SquatFormAnalyser():
             if self.most_visible_side == '':
                 return ['Insufficient Joint Data'], pose_landmarks
 
+        # TODO: Determine angle of person to screen. e.g. face on or side on (allow in between?)
+            # Then, adjust form criteria. E.g. if face on then check shoulders are level
+
         ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(pose_landmarks, self.most_visible_side)
         if knee_vertical_angle is not None:
             if self.state_sequence != [STANDING] and knee_vertical_angle <= 32:

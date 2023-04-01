@@ -89,7 +89,7 @@ export default function App() {
     if (streaming) {
       const intervalId = setInterval(() => {
         fetchFormFeedback();
-      }, 1000);
+      }, 500);
   
       return () => {
         clearInterval(intervalId);
