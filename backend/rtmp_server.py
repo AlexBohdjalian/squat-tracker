@@ -112,12 +112,19 @@ try:
         if not suc:
             break
 
-        # Set feedback
+        # Logging
+        if immediate_f not in [[], current_f]:
+            for tag, f in immediate_f:
+                if tag == 'STATE_SEQUENCE':
+                    print('State Sequence:', f)
+                elif tag == 'FEEDBACK' and \
+                    f not in ['Not Detected', 'Insufficient Joint Data']:
+                    print('Form Feedback:', f)
+                else:
+                    print('Unhandled Case:', tag, f)
+
         current_f = immediate_f
 
-        # Logging
-        if immediate_f not in [current_f, [], ['Not Detected'], ['Insufficient Joint Data']]:
-            print('Form Feedback:', immediate_f)
 except KeyboardInterrupt:
     print('Exiting gracefully...')
 

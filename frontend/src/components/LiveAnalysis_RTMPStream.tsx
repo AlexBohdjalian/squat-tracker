@@ -78,6 +78,7 @@ export default function App() {
     try {
       const response = await axios.get(`${FEEDBACK_URL}/form-feedback`);
       const data = response.data;
+      // TODO: get timestamp of feedback and try sink camera preview to that?
       setFormFeedback(data.join(', '));
     } catch (error) {
       console.error('Error fetching form feedback:', error);

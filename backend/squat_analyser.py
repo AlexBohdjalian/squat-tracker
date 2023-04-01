@@ -36,7 +36,6 @@ class SquatFormAnalyser():
             'hip_level': 0.05,
         }
         self.form_thresholds = self.form_thresholds_advanced
-        self.reps = []
         self.state_sequence = [STANDING]
         self.most_visible_side = ''
         self.squat_duration = 0
@@ -67,8 +66,9 @@ class SquatFormAnalyser():
                 landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style()
             )
             frame = cv2.resize(frame, (360, 640))
-            for i in range(len(feedback)):
-                self.draw_text(frame, feedback[i], pos=(0, i*35), font_scale=2)
+            for i, (tag, f) in enumerate(feedback):
+                if tag == 'FEEDBACK':
+                    self.draw_text(frame, f, pos=(0, 35 * i), font_scale=2)
             cv2.imshow('Live Stream', frame)
             cv2.waitKey(1)
 
@@ -79,35 +79,39 @@ class SquatFormAnalyser():
         s = time.time()
         pose_landmarks = self.pose_detector.make_prediction(frame)
         if pose_landmarks is None:
-            return ['Not Detected'], pose_landmarks
+            return [('FEEDBACK', 'Not Detected')], pose_landmarks
 
         if self.most_visible_side == '':
             self.most_visible_side = self.form_analyser.get_most_visible_side(pose_landmarks)
             if self.most_visible_side == '':
-                return ['Insufficient Joint Data'], pose_landmarks
+                return [('FEEDBACK', 'Insufficient Joint Data')], pose_landmarks
 
         # TODO: Determine angle of person to screen. e.g. face on or side on (allow in between?)
             # Then, adjust form criteria. E.g. if face on then check shoulders are level
 
         orientation = self.form_analyser.get_orientation(pose_landmarks)
 
+        final_feedback = []
         ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(pose_landmarks, self.most_visible_side)
         if knee_vertical_angle is not None:
             if self.state_sequence != [STANDING] and knee_vertical_angle <= 32:
                 if self.state_sequence[-1] == TRANSITION:
-                    squat_end_time = time.time()
+                    self.squat_end_time = time.time()
                 elif self.state_sequence[-1] == BOTTOM:
                     print(YELLOW, 'ANALYSIS INFO: Transition not detected. Was standing now bottom.', NORMAL)
 
                 self.squat_duration = self.squat_end_time - self.squat_start_time
-                self.reps.append([
-                    [
-                        self.squat_mid_time - self.squat_start_time,
-                        self.squat_end_time - self.squat_mid_time
-                    ],
-                    self.state_sequence
-                ])
-
+                
+                final_feedback.append((
+                    'STATE_SEQUENCE',
+                    (
+                        (
+                            self.squat_mid_time - self.squat_start_time,
+                            self.squat_end_time - self.squat_mid_time
+                        ),
+                        self.state_sequence
+                    )
+                ))
                 self.state_sequence = [STANDING]
             elif self.state_sequence[-1] != TRANSITION and 35 <= knee_vertical_angle <= 65:
                 if self.state_sequence[-1] == STANDING:
@@ -123,11 +127,10 @@ class SquatFormAnalyser():
                     self.state_sequence.append(BOTTOM)
 
         # Determine Feedback (This section needs a lot of work)
-        current_form_text = []
         if hip_vertical_angle is not None:
             hip_vertical_angle = round(hip_vertical_angle)
             if hip_vertical_angle > self.form_thresholds['hip'][1]:
-                current_form_text.append('Bend Backwards')
+                final_feedback.append(('FEEDBACK', 'Bend Backwards'))
             # TODO: fix this
             # elif hip_vertical_angle > self.form_thresholds['hip'][0]:
             #     current_form_text.append('Bend Forward')
@@ -140,7 +143,7 @@ class SquatFormAnalyser():
             elif knee_vertical_angle > self.form_thresholds['knee'][2]:
                 # 'Deep Squat'
                 limit = self.form_thresholds['knee'][2]
-                current_form_text.append(f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {limit}')
+                final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {limit}'))
 
         # Determine if hips/shoulders are level
         if orientation == 'face_on':
@@ -149,18 +152,20 @@ class SquatFormAnalyser():
                 'shoulder',
                 self.form_thresholds['shoulder_level']
             ):
-                current_form_text.append(f'Shoulders are not level')
+                final_feedback.append(('FEEDBACK', f'Shoulders are not level'))
             if not self.form_analyser.check_joints_are_level(
                 pose_landmarks,
                 'hip',
                 self.form_thresholds['hip_level']
             ):
-                current_form_text.append(f'Hips are not level')
+                final_feedback.append(('FEEDBACK', f'Hips are not level'))
+
+            # TODO: check that shoulders/hips are in line with feet
 
         if self.squat_end_time < self.squat_start_time:
             self.squat_duration = round(time.time() - self.squat_start_time, 2)
 
-        return current_form_text, pose_landmarks
+        return final_feedback, pose_landmarks
 
     def draw_text(self, img, text,
         to_centre=False,
