@@ -1,6 +1,6 @@
 import asyncio
 import websockets
-from backend.squat_check import SquatFormAnalyzer
+from backend_archived.squat_check import SquatFormAnalyzer
 from backend.mediapipe_estimator import MediaPipeDetector
 import json
 

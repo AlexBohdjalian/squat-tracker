@@ -3,16 +3,19 @@ import time
 import mediapipe as mp
 # from imutils.video import FileVideoStream
 from mediapipe_estimator import MediaPipeDetector
-from squat_check_v2 import SquatFormAnalyzer
+from squat_form_analyser import MediaPipe_To_Form_Interpreter
 
 STANDING = 'STANDING'
 TRANSITION = 'TRANSITION'
 BOTTOM = 'BOTTOM'
 
+NORMAL = '\u001b[0m'
+YELLOW = '\u001b[43m'
+
 class SquatFormAnalyser():
     def __init__(self):
         self.pose_detector = MediaPipeDetector()
-        self.form_analyser = SquatFormAnalyzer()
+        self.form_analyser = MediaPipe_To_Form_Interpreter()
         self.frame_stack = 2
         self.frame_skip = 3
         self.mp_drawing = mp.solutions.drawing_utils
@@ -27,7 +30,7 @@ class SquatFormAnalyser():
         }
         self.form_thresholds_advanced = {
             'ankle': 30, # currently unused
-            'knee': (50, 80, 100), 
+            'knee': (50, 80, 115), 
             'hip': (15, 50),
             'shoulder_level': 0.05,
             'hip_level': 0.05,
@@ -86,13 +89,15 @@ class SquatFormAnalyser():
         # TODO: Determine angle of person to screen. e.g. face on or side on (allow in between?)
             # Then, adjust form criteria. E.g. if face on then check shoulders are level
 
+        orientation = self.form_analyser.get_orientation(pose_landmarks)
+
         ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(pose_landmarks, self.most_visible_side)
         if knee_vertical_angle is not None:
             if self.state_sequence != [STANDING] and knee_vertical_angle <= 32:
                 if self.state_sequence[-1] == TRANSITION:
                     squat_end_time = time.time()
                 elif self.state_sequence[-1] == BOTTOM:
-                    print('Transition not detected. Was standing now bottom.')
+                    print(YELLOW, 'ANALYSIS INFO: Transition not detected. Was standing now bottom.', NORMAL)
 
                 self.squat_duration = self.squat_end_time - self.squat_start_time
                 self.reps.append([
@@ -113,7 +118,7 @@ class SquatFormAnalyser():
                     self.state_sequence.append(TRANSITION)
             elif self.state_sequence[-1] != BOTTOM and 75 <= knee_vertical_angle <= 95:
                 if self.state_sequence[-1] == STANDING:
-                    print('Transition not detected. Was bottom now standing.')
+                    print(YELLOW, 'ANALYSIS INFO: Transition not detected. Was bottom now standing.', NORMAL)
                 if self.state_sequence[-1] != BOTTOM:
                     self.state_sequence.append(BOTTOM)
 
@@ -138,18 +143,19 @@ class SquatFormAnalyser():
                 current_form_text.append(f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {limit}')
 
         # Determine if hips/shoulders are level
-        if not self.form_analyser.check_joints_are_level(
-            pose_landmarks,
-            'shoulder',
-            self.form_thresholds['shoulder_level']
-        ):
-            current_form_text.append(f'Shoulders are not level')
-        if not self.form_analyser.check_joints_are_level(
-            pose_landmarks,
-            'hip',
-            self.form_thresholds['hip_level']
-        ):
-            current_form_text.append(f'Hips are not level')
+        if orientation == 'face_on':
+            if not self.form_analyser.check_joints_are_level(
+                pose_landmarks,
+                'shoulder',
+                self.form_thresholds['shoulder_level']
+            ):
+                current_form_text.append(f'Shoulders are not level')
+            if not self.form_analyser.check_joints_are_level(
+                pose_landmarks,
+                'hip',
+                self.form_thresholds['hip_level']
+            ):
+                current_form_text.append(f'Hips are not level')
 
         if self.squat_end_time < self.squat_start_time:
             self.squat_duration = round(time.time() - self.squat_start_time, 2)

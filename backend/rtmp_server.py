@@ -5,10 +5,11 @@ import time
 from threading import Thread
 
 import cv2
-import squat_analyser as sa2
+import squat_analyser as sa
 from flask import Flask, jsonify
 
 
+# TODO: review the live low latency stream to see the quality
 # TODO: figure out how to make opencv open the stream / demo on another computer to see speeds
 # TODO: implement button in app to intialise this server or, allow this server to be constantly running and not require simultaneous start
 # TODO: implement threading?
@@ -58,7 +59,7 @@ ffmpeg_args = [
 
 
 # Declare constants and variables for feedback
-form_analyser = sa2.SquatFormAnalyser()
+form_analyser = sa.SquatFormAnalyser()
 port = 5000
 current_f = []
 

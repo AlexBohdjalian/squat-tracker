@@ -1,7 +1,10 @@
+from collections import Counter
+
 import numpy as np
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmark
 
-class SquatFormAnalyzer():
+
+class MediaPipe_To_Form_Interpreter():
     def __init__(self,
         confidence_threshold=0.5,
     ):
@@ -43,6 +46,8 @@ class SquatFormAnalyzer():
             'right_foot_index': 32
         }
         self.most_visible_side = ''
+        self.orientation_decided = False
+        self.orientation = []
 
     def __calc_angle(self, joints):
         point1, point2, point3 = joints
@@ -119,3 +124,32 @@ class SquatFormAnalyzer():
         )
 
         return abs(left_joint.y - right_joint.y) <= threshold
+
+    def get_orientation(self, pose_landmarks):
+        if not self.orientation_decided and len(self.orientation) < 10:
+            left_shoulder, right_shoulder, \
+            left_hip, right_hip, \
+            left_ankle, right_ankle \
+                = self.get_landmarks(pose_landmarks,
+                    ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip', 'left_ankle', 'right_ankle']
+                )
+            # Todo, check confidence
+
+            shoulder_depth_difference = abs(left_shoulder.z - right_shoulder.z)
+            hip_depth_difference = abs(left_hip.z - right_hip.z)
+
+            depth_threshold = 0.3
+
+            if shoulder_depth_difference < depth_threshold or hip_depth_difference < depth_threshold:
+                self.orientation.append("face_on")
+            else:
+                self.orientation.append("side_on")
+
+            most_common, _ = Counter(self.orientation).most_common(1)[0]
+            if len(self.orientation) == 10:
+                self.orientation_decided = True
+                self.orientation = most_common
+            else:
+                return most_common
+
+        return self.orientation
