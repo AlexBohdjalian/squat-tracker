@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, namedtuple
 
 import numpy as np
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmark
@@ -48,6 +48,7 @@ class MediaPipe_To_Form_Interpreter():
         self.most_visible_side = ''
         self.orientation_decided = False
         self.orientation = []
+        self.VerticalBase = namedtuple('VerticalBase', ['x', 'y', 'z', 'visibility'])
 
     def __calc_angle(self, joints):
         point1, point2, point3 = joints
@@ -99,9 +100,13 @@ class MediaPipe_To_Form_Interpreter():
         )
 
     def __get_angle_with_conf(self, confidence_threshold, joints):
-        vertical = NormalizedLandmark()
-        vertical.CopyFrom(joints[0])
-        vertical.y = 0
+        primary_joint = joints[0]
+        vertical = self.VerticalBase(
+            primary_joint.x,
+            0,
+            primary_joint.z,
+            primary_joint.visibility
+        )
 
         joints.insert(0, vertical)
         if self.__check_confidence(confidence_threshold, joints):
