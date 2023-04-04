@@ -55,7 +55,7 @@ const SettingsBlock = ({ settings }: SettingsBlockProps) => {
   );
 }
 
-export default function VideoScreen() {
+export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container}>
       <SettingsBlock
@@ -70,7 +70,6 @@ export default function VideoScreen() {
     </ScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {

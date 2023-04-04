@@ -86,8 +86,8 @@ class SquatFormAnalyser():
             if self.most_visible_side == '':
                 return [('FEEDBACK', 'Insufficient Joint Data')], pose_landmarks
 
-        # TODO: Determine angle of person to screen. e.g. face on or side on (allow in between?)
-            # Then, adjust form criteria. E.g. if face on then check shoulders are level
+        # TODO: Adjust form criteria based on orientation
+        # TODO: redefine angles for stages and move into form_thresholds
 
         orientation = self.form_analyser.get_orientation(pose_landmarks)
 

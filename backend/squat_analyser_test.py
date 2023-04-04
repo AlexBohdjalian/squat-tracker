@@ -9,9 +9,9 @@ GREEN = '\u001b[32m'
 BLUE = '\u001b[34m'
 
 videos = [
-    ('backend/assets/goblet_squat.mp4', ('GOOD', 3)),
+    # ('backend/assets/goblet_squat.mp4', ('GOOD', 3)),
     ('backend/assets/barbell_back_squat.mp4', ('GOOD', 11)),
-    ('backend/assets/barbell_front_squat.mp4', ('GOOD', 11)),
+    # ('backend/assets/barbell_front_squat.mp4', ('GOOD', 11)),
     # 'backend/assets/dan_squat.mp4',
     # 'backend/assets/me_squat.mp4',
     # TODO: need some bad form videos
@@ -32,7 +32,7 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
     all_f = []
     state_sequences = []
     while True:
-        feedback, suc = form_analyser.analyse(cap, False)
+        feedback, suc = form_analyser.analyse(cap, show_output=True)
         if not suc:
             break
 
