@@ -26,7 +26,6 @@ export interface ISettingsState {
 }
 
 const ip = '192.168.0.28';
-const RTMP_SERVER_URL = `http://${ip}:8080`;
 const FEEDBACK_URL = `http://${ip}:5000`;
 
 export default function App() {
@@ -40,15 +39,14 @@ export default function App() {
   }>({ display: false, message: '' });
   const [formFeedback, setFormFeedback] = useState<string>('');
 
-  const [settings, setSettings] = useState<ISettingsState>({
+  // CONSTANTS
+  const settings: ISettingsState = {
     resolution: '720p',
     framerate: 10,
     videoBitrate: 1400,
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
-  });
-
-  // CONSTANTS
+  };
   const ref = useRef<LiveStreamMethods | null>(null);
   const isAndroid = Platform.OS === 'android';
   const style = styles(streaming, isAndroid, warning.display);
@@ -64,15 +62,6 @@ export default function App() {
     };
     warning.display && grow();
   }, [warning.display, growAnim, isAndroid]);
-
-  // HANDLERS
-  // const shrink = () => {
-  //   Animated.timing(growAnim, {
-  //     toValue: 0,
-  //     duration: 200,
-  //     useNativeDriver: false,
-  //   }).start();
-  // };
 
   const fetchFormFeedback = async () => {
     try {
