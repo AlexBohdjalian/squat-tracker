@@ -10,6 +10,12 @@ class MediaPipe_To_Form_Interpreter():
     ):
         self.min_confidence_threshold = confidence_threshold
         self.main_joints = ['ankle', 'knee', 'hip', 'shoulder']
+        self.main_joints_for_dict = [
+            'left_ankle', 'right_ankle',
+            'left_knee', 'right_knee',
+            'left_hip', 'right_hip',
+            'left_shoulder', 'right_shoulder'
+        ]
         self.landmark_names = {
             'nose': 0,
             'left_eye_inner': 1,
@@ -50,6 +56,7 @@ class MediaPipe_To_Form_Interpreter():
         self.orientation = []
         self.VerticalBase = namedtuple('VerticalBase', ['x', 'y', 'z', 'visibility'])
 
+
     def __calc_angle(self, joints):
         point1, point2, point3 = joints
         radians = np.arctan2(point3.y-point2.y, point3.x-point2.x) \
@@ -61,8 +68,10 @@ class MediaPipe_To_Form_Interpreter():
             
         return angle
 
+
     def __check_confidence(self, confidence_threshold, joints):
         return all(joints) and all([joint.visibility > confidence_threshold for joint in joints])
+
 
     def get_most_visible_side(self, pose_landmarks):
         if self.most_visible_side == '':
@@ -88,55 +97,24 @@ class MediaPipe_To_Form_Interpreter():
 
         return self.most_visible_side
 
+
     def get_landmarks(self, pose_landmarks, landmarks):
         return [
             pose_landmarks.landmark[self.landmark_names[landmark_name]
         ] for landmark_name in landmarks]
 
-    def get_main_joints(self, pose_landmarks, most_visible_side):
-        return self.get_landmarks(
-            pose_landmarks,
-            [most_visible_side + j for j in self.main_joints],
-        )
 
-    def __get_angle_with_conf(self, confidence_threshold, joints):
-        primary_joint = joints[0]
-        vertical = self.VerticalBase(
-            primary_joint.x,
-            0,
-            primary_joint.z,
-            primary_joint.visibility
-        )
+    def get_orientation_and_joint_dict(self, pose_landmarks):
+        joint_dict = {
+            joint_name: pose_landmarks.landmark[self.landmark_names[joint_name]]
+            for joint_name in self.main_joints_for_dict
+        }
 
-        joints.insert(0, vertical)
-        if self.__check_confidence(confidence_threshold, joints):
-            return self.__calc_angle(joints)
-        return None
-
-    def get_main_joint_vertical_angles(self, pose_landmarks, most_visible_side):
-        ankle, knee, hip, shoulder = self.get_main_joints(pose_landmarks, most_visible_side)
-
-        return [
-            self.__get_angle_with_conf(self.min_confidence_threshold, [ankle, knee]),
-            self.__get_angle_with_conf(self.min_confidence_threshold, [knee, hip]),
-            self.__get_angle_with_conf(self.min_confidence_threshold, [hip, shoulder])
-        ]
-
-    def check_joints_are_level(self, pose_landmarks, joint, threshold):
-        left_joint, right_joint = self.get_landmarks(
-            pose_landmarks,
-            ['left_' + joint, 'right_' + joint]
-        )
-
-        return abs(left_joint.y - right_joint.y) <= threshold
-
-    def get_orientation(self, pose_landmarks):
         if not self.orientation_decided and len(self.orientation) < 10:
             left_shoulder, right_shoulder, \
             left_hip, right_hip, \
-            left_ankle, right_ankle \
                 = self.get_landmarks(pose_landmarks,
-                    ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip', 'left_ankle', 'right_ankle']
+                    ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']
                 )
             # Todo, check confidence
 
@@ -155,6 +133,44 @@ class MediaPipe_To_Form_Interpreter():
                 self.orientation_decided = True
                 self.orientation = most_common
             else:
-                return most_common
+                return most_common, joint_dict
 
-        return self.orientation
+        return self.orientation, joint_dict
+
+
+    def get_main_joints(self, pose_landmarks, most_visible_side):
+        return self.get_landmarks(
+            pose_landmarks,
+            [most_visible_side + j for j in self.main_joints],
+        )
+
+
+    def __get_angle_with_conf(self, confidence_threshold, joints):
+        primary_joint = joints[0]
+        vertical = self.VerticalBase(
+            primary_joint.x,
+            0,
+            primary_joint.z,
+            primary_joint.visibility
+        )
+
+        joints.insert(0, vertical)
+        if self.__check_confidence(confidence_threshold, joints):
+            return self.__calc_angle(joints)
+        return None
+
+
+    def get_main_joint_vertical_angles(self, joints):
+        return [
+            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['ankle'], joints['knee']]),
+            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['knee'], joints['hip']]),
+            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['hip'], joints['shoulder']])
+        ]
+
+
+    def check_joints_are_level(self, joint1, joint2, threshold):
+        return abs(joint1.y - joint2.y) <= threshold
+
+
+    def check_joints_are_inline(self, joint1_left, joint1_right, joint2_left, joint2_right, threshold):
+        return abs(abs(joint1_right.x - joint1_left.x) - abs(joint2_right.x - joint2_left.x)) <= threshold

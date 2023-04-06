@@ -42,7 +42,7 @@ export default function App() {
   // CONSTANTS
   const settings: ISettingsState = {
     resolution: '720p',
-    framerate: 10,
+    framerate: 10, // TODO: try higher fps here
     videoBitrate: 1400,
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',

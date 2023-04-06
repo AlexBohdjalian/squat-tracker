@@ -1,7 +1,6 @@
 import cv2
 import time
 import mediapipe as mp
-# from imutils.video import FileVideoStream
 from mediapipe_estimator import MediaPipeDetector
 from squat_form_analyser import MediaPipe_To_Form_Interpreter
 
@@ -24,16 +23,22 @@ class SquatFormAnalyser():
         self.text_colour = (219, 123, 3)
         self.bad_form_colour = (0, 0, 255)
         self.form_thresholds_beginner = {
-            'ankle': 45, # currently unused
-            'knee': (50, 70, 95), 
-            'hip': (10, 50)
+            'ankle': 45, # TODO: Tune, rename/clarify this
+            'knee': (50, 70, 95), # TODO: Tune, rename/clarify this
+            'hip': (10, 50), # TODO: Tune, rename/clarify this
+            'shoulder_level': 0.05, # TODO: Tune this
+            'hip_level': 0.05, # TODO: Tune this
+            'hip_inline': 0.075, # TODO: Tune this
+            'shoulder_inline': 0.075, # TODO: Tune this
         }
         self.form_thresholds_advanced = {
-            'ankle': 30, # currently unused
-            'knee': (50, 80, 115), 
-            'hip': (15, 50),
+            'ankle': 30, # TODO: Tune, rename/clarify this
+            'knee': (50, 80, 115), # TODO: Tune, rename/clarify this
+            'hip': (15, 50), # TODO: Tune, rename/clarify this
             'shoulder_level': 0.05,
-            'hip_level': 0.05,
+            'hip_level': 0.05, # TODO: Tune this
+            'hip_inline': 0.05, # TODO: Tune this
+            'shoulder_inline': 0.05, # TODO: Tune this
         }
         self.form_thresholds = self.form_thresholds_advanced
         self.state_sequence = [STANDING]
@@ -42,6 +47,7 @@ class SquatFormAnalyser():
         self.squat_start_time = 0
         self.squat_mid_time = 0
         self.squat_end_time = 0
+
 
     def analyse(self, cap, show_output=False):
         # TODO: check cap is valid? (uncomment below)
@@ -76,7 +82,6 @@ class SquatFormAnalyser():
 
 
     def get_feedback_from_frame(self, frame):
-        s = time.time()
         pose_landmarks = self.pose_detector.make_prediction(frame)
         if pose_landmarks is None:
             return [('FEEDBACK', 'Not Detected')], pose_landmarks
@@ -86,13 +91,23 @@ class SquatFormAnalyser():
             if self.most_visible_side == '':
                 return [('FEEDBACK', 'Insufficient Joint Data')], pose_landmarks
 
+        # TODO: get joints that are needed once and then use for all checks below
         # TODO: Adjust form criteria based on orientation
         # TODO: redefine angles for stages and move into form_thresholds
+        # TODO: make sure every check checks confidence of joints e.g. hips are level
 
-        orientation = self.form_analyser.get_orientation(pose_landmarks)
+        orientation, main_joint_dict = self.form_analyser.get_orientation_and_joint_dict(pose_landmarks)
+        most_visible_main_joints = {
+            joint: main_joint_dict[self.most_visible_side + joint] for joint in [
+                'ankle',
+                'knee',
+                'hip',
+                'shoulder'
+            ]
+        }
 
         final_feedback = []
-        ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(pose_landmarks, self.most_visible_side)
+        ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
         if knee_vertical_angle is not None:
             if self.state_sequence != [STANDING] and knee_vertical_angle <= 32:
                 if self.state_sequence[-1] == TRANSITION:
@@ -139,7 +154,7 @@ class SquatFormAnalyser():
             knee_vertical_angle = round(knee_vertical_angle)
             if self.form_thresholds['knee'][0] < knee_vertical_angle < self.form_thresholds['knee'][1] and \
                 self.state_sequence.count('s2') == 1:
-                self.current_form_text.append('Lower Hips')
+                final_feedback.append(('FEEDBACK', 'Lower Hips'))
             elif knee_vertical_angle > self.form_thresholds['knee'][2]:
                 # 'Deep Squat'
                 limit = self.form_thresholds['knee'][2]
@@ -148,24 +163,41 @@ class SquatFormAnalyser():
         # Determine if hips/shoulders are level
         if orientation == 'face_on':
             if not self.form_analyser.check_joints_are_level(
-                pose_landmarks,
-                'shoulder',
+                main_joint_dict['left_shoulder'],
+                main_joint_dict['right_shoulder'],
                 self.form_thresholds['shoulder_level']
             ):
                 final_feedback.append(('FEEDBACK', f'Shoulders are not level'))
             if not self.form_analyser.check_joints_are_level(
-                pose_landmarks,
-                'hip',
+                main_joint_dict['left_hip'],
+                main_joint_dict['right_hip'],
                 self.form_thresholds['hip_level']
             ):
                 final_feedback.append(('FEEDBACK', f'Hips are not level'))
 
-            # TODO: check that shoulders/hips are in line with feet
+            if not self.form_analyser.check_joints_are_inline(
+                main_joint_dict['left_hip'],
+                main_joint_dict['right_hip'],
+                main_joint_dict['left_ankle'],
+                main_joint_dict['right_ankle'],
+                self.form_thresholds['hip_inline']
+            ):
+                final_feedback.append(('FEEDBACK', f'Hips are not inline with feet'))
+
+            if not self.form_analyser.check_joints_are_inline(
+                main_joint_dict['left_shoulder'],
+                main_joint_dict['right_shoulder'],
+                main_joint_dict['left_ankle'],
+                main_joint_dict['right_ankle'],
+                self.form_thresholds['shoulder_inline']
+            ):
+                final_feedback.append(('FEEDBACK', f'Shoulders are not inline with feet'))
 
         if self.squat_end_time < self.squat_start_time:
             self.squat_duration = round(time.time() - self.squat_start_time, 2)
 
         return final_feedback, pose_landmarks
+
 
     def draw_text(self, img, text,
         to_centre=False,

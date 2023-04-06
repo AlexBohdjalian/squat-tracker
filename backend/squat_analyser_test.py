@@ -9,9 +9,9 @@ GREEN = '\u001b[32m'
 BLUE = '\u001b[34m'
 
 videos = [
-    # ('backend/assets/goblet_squat.mp4', ('GOOD', 3)),
-    ('backend/assets/barbell_back_squat.mp4', ('GOOD', 11)),
-    # ('backend/assets/barbell_front_squat.mp4', ('GOOD', 11)),
+    ('./assets/goblet_squat.mp4', ('GOOD', 3)),
+    ('./assets/barbell_back_squat.mp4', ('GOOD', 11)),
+    ('./assets/barbell_front_squat.mp4', ('GOOD', 11)),
     # 'backend/assets/dan_squat.mp4',
     # 'backend/assets/me_squat.mp4',
     # TODO: need some bad form videos
@@ -32,7 +32,7 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
     all_f = []
     state_sequences = []
     while True:
-        feedback, suc = form_analyser.analyse(cap, show_output=True)
+        feedback, suc = form_analyser.analyse(cap, show_output=False)
         if not suc:
             break
 
@@ -81,7 +81,6 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
         end = all_f[0][0]
         msg = all_f[0][1]
 
-        print(all_f)
         for feedback in range(1, len(all_f)):
             if all_f[feedback][0] == end + 1 and all_f[feedback][1] == msg:
                 end = all_f[feedback][0]
@@ -90,27 +89,28 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
                 start = all_f[feedback][0]
                 end = all_f[feedback][0]
                 msg = all_f[feedback][1]
-
         output.append((start, end, msg))
 
-        [print(i) for i in output]
-        
-        frames = [f[1] for f in all_f]
-        cap = cv2.VideoCapture(vid)
-        frame_count = 0
-        while cap.isOpened():
-            suc, frame = cap.read()
-            if not suc:
-                break
+        for i in output:
+            print(i)
 
-            frame_indexes = [f[0] for f in all_f]
-            if frame_count in frame_indexes:
-                frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
-                cv2.imshow('Frame', frame)
-                cv2.waitKey(100)
+        # frames = [f[1] for f in all_f]
+        # cap_new = cv2.VideoCapture(vid)
+        # frame_count = 0
+        # while cap_new.isOpened():
+        #     suc, frame = cap_new.read()
+        #     if not suc:
+        #         break
 
-            frame_count += 1
-        cv2.destroyAllWindows()
+        #     frame_indexes = [f[0] for f in all_f]
+        #     if frame_count in frame_indexes:
+        #         frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
+        #         cv2.imshow('Frame', frame)
+        #         cv2.waitKey(100)
+
+        #     frame_count += 1
+        # cv2.destroyAllWindows()
+        # cap_new.release()
 
     if vid != 0:
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -123,6 +123,10 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
     else:
         print(GREEN, 'TEST PASSED', NORMAL)
     print()
+
+    cv2.destroyAllWindows()
+    cap.release()
+
 
 if any_test_failed:
     print(RED, 'Some Tests Failed', NORMAL)

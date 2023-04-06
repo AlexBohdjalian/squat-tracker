@@ -81,6 +81,8 @@ flask_thread.daemon = True
 flask_thread.start()
 
 
+# TODO: put this into a request e.g. /start-server and in component,
+    # add request to handleStreaming
 # Begin re-streaming to a local endpoint
 proc1 = subprocess.Popen(
     ffmpeg_args,
