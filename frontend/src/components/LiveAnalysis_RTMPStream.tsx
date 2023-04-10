@@ -32,7 +32,7 @@ export default function App() {
   // LOCAL STATE
   // Stream view
   const [streaming, setStreaming] = useState(false);
-  const [camera, setCamera] = useState<'front' | 'back'>('back');
+  const [camera, setCamera] = useState<'front' | 'back'>('front');
   const [warning, setWarning] = useState<{
     display: boolean;
     message: string;
@@ -79,7 +79,7 @@ export default function App() {
     if (streaming) {
       const intervalId = setInterval(() => {
         fetchFormFeedback();
-      }, 500);
+      }, 1000 / settings.framerate);
   
       return () => {
         clearInterval(intervalId);

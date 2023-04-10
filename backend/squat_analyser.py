@@ -26,10 +26,8 @@ class SquatFormAnalyser():
             'ankle': 45, # TODO: Tune, rename/clarify this
             'knee': (50, 70, 95), # TODO: Tune, rename/clarify this
             'hip': (10, 50), # TODO: Tune, rename/clarify this
-            'shoulder_level': 0.05, # TODO: Tune this
+            'shoulder_level': 0.05,
             'hip_level': 0.05, # TODO: Tune this
-            'hip_inline': 0.075, # TODO: Tune this
-            'shoulder_inline': 0.075, # TODO: Tune this
         }
         self.form_thresholds_advanced = {
             'ankle': 30, # TODO: Tune, rename/clarify this
@@ -37,8 +35,9 @@ class SquatFormAnalyser():
             'hip': (15, 50), # TODO: Tune, rename/clarify this
             'shoulder_level': 0.05,
             'hip_level': 0.05, # TODO: Tune this
-            'hip_inline': 0.05, # TODO: Tune this
-            'shoulder_inline': 0.05, # TODO: Tune this
+            'knee_level': 0.05, # TODO: Tune this
+            'hip_vertically_aligned': 0.04, # TODO: Tune this
+            'shoulder_vertically_aligned': 0.075, # TODO: Tune this
         }
         self.form_thresholds = self.form_thresholds_advanced
         self.state_sequence = [STANDING]
@@ -107,7 +106,7 @@ class SquatFormAnalyser():
         }
 
         final_feedback = []
-        ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
+        knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
         if knee_vertical_angle is not None:
             if self.state_sequence != [STANDING] and knee_vertical_angle <= 32:
                 if self.state_sequence[-1] == TRANSITION:
@@ -156,42 +155,52 @@ class SquatFormAnalyser():
                 self.state_sequence.count('s2') == 1:
                 final_feedback.append(('FEEDBACK', 'Lower Hips'))
             elif knee_vertical_angle > self.form_thresholds['knee'][2]:
-                # 'Deep Squat'
+                # 'Deep Squat' # what is this comment?
                 limit = self.form_thresholds['knee'][2]
                 final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {limit}'))
 
-        # Determine if hips/shoulders are level
+        if self.state_sequence[-1] == BOTTOM:
+            if not self.form_analyser.check_joints_are_level(
+                main_joint_dict['left_knee'],
+                main_joint_dict['right_knee'],
+                self.form_thresholds['knee_level']
+            ):
+                final_feedback.append(('FEEDBACK', 'Knees are not level'))
+
         if orientation == 'face_on':
             if not self.form_analyser.check_joints_are_level(
                 main_joint_dict['left_shoulder'],
                 main_joint_dict['right_shoulder'],
                 self.form_thresholds['shoulder_level']
             ):
-                final_feedback.append(('FEEDBACK', f'Shoulders are not level'))
+                final_feedback.append(('FEEDBACK', 'Shoulders are not level'))
             if not self.form_analyser.check_joints_are_level(
                 main_joint_dict['left_hip'],
                 main_joint_dict['right_hip'],
                 self.form_thresholds['hip_level']
             ):
-                final_feedback.append(('FEEDBACK', f'Hips are not level'))
+                final_feedback.append(('FEEDBACK', 'Hips are not level'))
 
-            if not self.form_analyser.check_joints_are_inline(
+            if not self.form_analyser.check_joints_are_vertically_aligned(
                 main_joint_dict['left_hip'],
                 main_joint_dict['right_hip'],
                 main_joint_dict['left_ankle'],
                 main_joint_dict['right_ankle'],
-                self.form_thresholds['hip_inline']
+                self.form_thresholds['hip_vertically_aligned']
             ):
-                final_feedback.append(('FEEDBACK', f'Hips are not inline with feet'))
+                final_feedback.append(('FEEDBACK', 'Hips are not vertically aligned with feet'))
 
-            if not self.form_analyser.check_joints_are_inline(
+            if not self.form_analyser.check_joints_are_vertically_aligned(
                 main_joint_dict['left_shoulder'],
                 main_joint_dict['right_shoulder'],
                 main_joint_dict['left_ankle'],
                 main_joint_dict['right_ankle'],
-                self.form_thresholds['shoulder_inline']
+                self.form_thresholds['shoulder_vertically_aligned']
             ):
-                final_feedback.append(('FEEDBACK', f'Shoulders are not inline with feet'))
+                final_feedback.append(('FEEDBACK', 'Shoulders are not vertically aligned with feet'))
+        elif orientation == 'side_on':
+            # TODO: this
+            pass
 
         if self.squat_end_time < self.squat_start_time:
             self.squat_duration = round(time.time() - self.squat_start_time, 2)

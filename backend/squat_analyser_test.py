@@ -36,7 +36,7 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
         if not suc:
             break
 
-        # TODO: modify from here on so that tag is checked in f
+        # TODO: modify from here on so that tag is checked in feedback
 
         if feedback != prev_feedback and feedback != [('FEEDBACK', 'Not Detected')] and feedback != [('FEEDBACK', 'Insufficient Joint Data')]:
             prev_feedback = feedback

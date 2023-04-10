@@ -111,15 +111,10 @@ class MediaPipe_To_Form_Interpreter():
         }
 
         if not self.orientation_decided and len(self.orientation) < 10:
-            left_shoulder, right_shoulder, \
-            left_hip, right_hip, \
-                = self.get_landmarks(pose_landmarks,
-                    ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']
-                )
-            # Todo, check confidence
+            # TODO: check confidence
 
-            shoulder_depth_difference = abs(left_shoulder.z - right_shoulder.z)
-            hip_depth_difference = abs(left_hip.z - right_hip.z)
+            shoulder_depth_difference = abs(joint_dict['left_shoulder'].z - joint_dict['right_shoulder'].z)
+            hip_depth_difference = abs(joint_dict['left_hip'].z - joint_dict['right_hip'].z)
 
             depth_threshold = 0.3
 
@@ -162,7 +157,7 @@ class MediaPipe_To_Form_Interpreter():
 
     def get_main_joint_vertical_angles(self, joints):
         return [
-            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['ankle'], joints['knee']]),
+            # self.__get_angle_with_conf(self.min_confidence_threshold, [joints['ankle'], joints['knee']]),
             self.__get_angle_with_conf(self.min_confidence_threshold, [joints['knee'], joints['hip']]),
             self.__get_angle_with_conf(self.min_confidence_threshold, [joints['hip'], joints['shoulder']])
         ]
@@ -172,5 +167,7 @@ class MediaPipe_To_Form_Interpreter():
         return abs(joint1.y - joint2.y) <= threshold
 
 
-    def check_joints_are_inline(self, joint1_left, joint1_right, joint2_left, joint2_right, threshold):
-        return abs(abs(joint1_right.x - joint1_left.x) - abs(joint2_right.x - joint2_left.x)) <= threshold
+    def check_joints_are_vertically_aligned(self, joint1_left, joint1_right, joint2_left, joint2_right, threshold):
+        joint1_mid = abs(joint1_right.x + abs(joint1_right.x - joint1_left.x) / 2)
+        joint2_mid = abs(joint2_right.x + abs(joint2_right.x - joint2_left.x) / 2)
+        return abs(joint1_mid - joint2_mid) <= threshold
