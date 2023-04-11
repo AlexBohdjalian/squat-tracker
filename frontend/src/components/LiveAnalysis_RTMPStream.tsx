@@ -70,7 +70,9 @@ export default function App() {
       // TODO: get timestamp of feedback and try sink camera preview to that?
       setFormFeedback(data.join(', '));
     } catch (error) {
+      if (error.message !== "Network Error") {
       console.error('Error fetching form feedback:', error);
+      }
     }
   };
 

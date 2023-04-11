@@ -32,8 +32,8 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
     all_f = []
     state_sequences = []
     while True:
-        feedback, suc = form_analyser.analyse(cap, show_output=False)
-        if not suc:
+        feedback, success = form_analyser.analyse(cap, show_output=True)
+        if not success:
             break
 
         # TODO: modify from here on so that tag is checked in feedback

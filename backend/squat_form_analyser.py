@@ -10,12 +10,6 @@ class MediaPipe_To_Form_Interpreter():
     ):
         self.min_confidence_threshold = confidence_threshold
         self.main_joints = ['ankle', 'knee', 'hip', 'shoulder']
-        self.main_joints_for_dict = [
-            'left_ankle', 'right_ankle',
-            'left_knee', 'right_knee',
-            'left_hip', 'right_hip',
-            'left_shoulder', 'right_shoulder'
-        ]
         self.landmark_names = {
             'nose': 0,
             'left_eye_inner': 1,
@@ -51,8 +45,7 @@ class MediaPipe_To_Form_Interpreter():
             'left_foot_index': 31,
             'right_foot_index': 32
         }
-        self.most_visible_side = ''
-        self.orientation_decided = False
+        self.most_visible_side = []
         self.orientation = []
         self.VerticalBase = namedtuple('VerticalBase', ['x', 'y', 'z', 'visibility'])
 
@@ -69,21 +62,22 @@ class MediaPipe_To_Form_Interpreter():
         return angle
 
 
-    def __check_confidence(self, confidence_threshold, joints):
+    def check_confidence(self, confidence_threshold, joints):
         return all(joints) and all([joint.visibility > confidence_threshold for joint in joints])
 
 
-    def get_most_visible_side(self, pose_landmarks):
-        if self.most_visible_side == '':
-            # Extract joints from both sides
-            right_joints = self.get_landmarks(
-                pose_landmarks,
-                ['right_' + j for j in self.main_joints]
-            )
-            left_joints = self.get_landmarks(
-                pose_landmarks,
-                ['left_' + j for j in self.main_joints]
-            )
+    def get_joints_dict(self, pose_landmarks):
+        return {
+            joint_name: pose_landmarks.landmark[self.landmark_names[joint_name]]
+            for joint_name in self.landmark_names.keys()
+        }
+
+
+    def get_most_visible_side(self, left_joints, right_joints, set_begun):
+        if set_begun:
+            if isinstance(self.most_visible_side, type([])):
+                self.most_visible_side, _ = Counter(self.most_visible_side).most_common(1)[0]
+        else:
             right_visibility = 0
             left_visibility = 0
             for right_joint, left_joint in zip(right_joints, left_joints):
@@ -91,53 +85,34 @@ class MediaPipe_To_Form_Interpreter():
                 left_visibility += left_joint.visibility
 
             if right_visibility < left_visibility:
-                self.most_visible_side = 'left_'
+                self.most_visible_side.append('left_')
             else:
-                self.most_visible_side = 'right_'
+                self.most_visible_side.append('right_')
+            
+            return self.most_visible_side[-1]
 
         return self.most_visible_side
 
 
-    def get_landmarks(self, pose_landmarks, landmarks):
-        return [
-            pose_landmarks.landmark[self.landmark_names[landmark_name]
-        ] for landmark_name in landmarks]
-
-
-    def get_orientation_and_joint_dict(self, pose_landmarks):
-        joint_dict = {
-            joint_name: pose_landmarks.landmark[self.landmark_names[joint_name]]
-            for joint_name in self.main_joints_for_dict
-        }
-
-        if not self.orientation_decided and len(self.orientation) < 10:
+    def get_orientation(self, left_shoulder, right_shoulder, left_hip, right_hip, threshold):
+        if isinstance(self.orientation, type([])) and len(self.orientation) < 10:
             # TODO: check confidence
 
-            shoulder_depth_difference = abs(joint_dict['left_shoulder'].z - joint_dict['right_shoulder'].z)
-            hip_depth_difference = abs(joint_dict['left_hip'].z - joint_dict['right_hip'].z)
+            shoulder_depth_difference = abs(left_shoulder.z - right_shoulder.z)
+            hip_depth_difference = abs(left_hip.z - right_hip.z)
 
-            depth_threshold = 0.3
-
-            if shoulder_depth_difference < depth_threshold or hip_depth_difference < depth_threshold:
+            if shoulder_depth_difference < threshold and hip_depth_difference < threshold:
                 self.orientation.append("face_on")
             else:
                 self.orientation.append("side_on")
 
             most_common, _ = Counter(self.orientation).most_common(1)[0]
             if len(self.orientation) == 10:
-                self.orientation_decided = True
                 self.orientation = most_common
             else:
-                return most_common, joint_dict
+                return most_common
 
-        return self.orientation, joint_dict
-
-
-    def get_main_joints(self, pose_landmarks, most_visible_side):
-        return self.get_landmarks(
-            pose_landmarks,
-            [most_visible_side + j for j in self.main_joints],
-        )
+        return self.orientation
 
 
     def __get_angle_with_conf(self, confidence_threshold, joints):
@@ -150,7 +125,7 @@ class MediaPipe_To_Form_Interpreter():
         )
 
         joints.insert(0, vertical)
-        if self.__check_confidence(confidence_threshold, joints):
+        if self.check_confidence(confidence_threshold, joints):
             return self.__calc_angle(joints)
         return None
 
@@ -163,11 +138,22 @@ class MediaPipe_To_Form_Interpreter():
         ]
 
 
+    def joints_in_starting_position(
+        self,
+        knee_vertical_angle,
+        hip_vertical_angle,
+        knee_angle_range,
+        hip_angle_range
+    ):
+        return knee_angle_range[0] <= knee_vertical_angle <= knee_angle_range[1] and \
+            hip_angle_range[0] <= hip_vertical_angle <= hip_angle_range[1]
+
+
     def check_joints_are_level(self, joint1, joint2, threshold):
         return abs(joint1.y - joint2.y) <= threshold
 
 
-    def check_joints_are_vertically_aligned(self, joint1_left, joint1_right, joint2_left, joint2_right, threshold):
-        joint1_mid = abs(joint1_right.x + abs(joint1_right.x - joint1_left.x) / 2)
-        joint2_mid = abs(joint2_right.x + abs(joint2_right.x - joint2_left.x) / 2)
+    def check_joints_are_vertically_aligned(self, left_joint1, right_joint1, left_joint2, right_joint2, threshold):
+        joint1_mid = abs(right_joint1.x + abs(right_joint1.x - left_joint1.x) / 2)
+        joint2_mid = abs(right_joint2.x + abs(right_joint2.x - left_joint2.x) / 2)
         return abs(joint1_mid - joint2_mid) <= threshold

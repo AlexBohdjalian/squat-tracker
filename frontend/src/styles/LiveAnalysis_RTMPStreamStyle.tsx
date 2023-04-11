@@ -20,6 +20,7 @@ export default (streaming: boolean, android: boolean, warning: boolean) =>
     formFeedbackText: {
       color: 'black',
       fontSize: 16,
+      fontWeight: 'bold',
       textAlign: 'center',
     },       
     livestreamView: {

@@ -34,19 +34,34 @@ class SquatFormAnalyser():
             'shoulder_vertically_aligned': 0.075, # TODO: Tune this
         }
         self.form_thresholds_advanced = {
+            'stationary': 0.05, # TODO: tune this !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+            'face_on': 0.3, # TODO: split this into shoulder / hips and tune
+
+            'knee_angle_range': (0, 25), # TODO: Tune this
+            'hip_angle_range': (0, 25), # TODO: Tune this
+
             'safe_ankle_angle': 30, # TODO: Tune this
             'knee_transition_angle_range': (50, 80), # TODO: Tune this
             'safe_knee_angle': 115, # TODO: Tune this
-            'hip_angle_range': (15, 50), # TODO: Tune this
+            'safe_hip_angle_range': (15, 50), # TODO: Tune this
+
             'shoulder_level': 0.05,
-            'hip_level': 0.05, # TODO: Tune this
+            'ankle_level': 0.05, # TODO: Tune this
             'knee_level': 0.05, # TODO: Tune this
+            'hip_level': 0.05, # TODO: Tune this
+
             'hip_vertically_aligned': 0.04, # TODO: Tune this
             'shoulder_vertically_aligned': 0.075, # TODO: Tune this
         }
         self.form_thresholds = self.form_thresholds_advanced if use_advanced_criteria else self.form_thresholds_beginner
         self.state_sequence = [STANDING]
+        self.set_has_begun = False
         self.most_visible_side = ''
+        self.joint_buffer = []
+        self.joint_buffer_size = 2
+        self.stationary_duration = 3.0
+        self.stationary_start_time = None
         self.squat_duration = 0
         self.squat_start_time = 0
         self.squat_mid_time = 0
@@ -54,20 +69,79 @@ class SquatFormAnalyser():
 
 
     def analyse(self, cap, show_output=False):
-        if cap == 0:
-            raise ValueError('Invalid video source')
+        # Get a frame
+        success, frame = cap.read()
+        if not success:
+            return 'Video End', success
 
-        suc, frame = cap.read()
-        if not suc:
-            return 'Video End', suc
+        # Get pose landmarks
+        pose_landmarks = self.pose_detector.make_prediction(frame)
+        if pose_landmarks is None:
+            return [('FEEDBACK', 'Not Detected')], success
 
-        # TODO: check if squat has started with separate function
-            # if it has then do estimation as below
+        # Get dictionary of joints for ease of use
+        joints_dict = self.form_analyser.get_joints_dict(pose_landmarks)
 
-        feedback, pose_landmarks = self.get_feedback_from_frame(frame)
+        if self.set_has_begun:
+            # TODO:
+                # check confidence of joints
+                    # option 1: if not confident, end set
+                    # option 2: if not confident, skip frame
+                    # option 3: if not confident for *some* frames, end set
+                    # which joints?
+                # implement
+                    # self.check_set_has_ended()
+                    # self.initialise_state()
+                    # self.form_analyser.initialise_state()
+                # review self.get_feedback_from_landmarks()
 
+            exit('\u001b[41m This section needs reviewing ' + ' \u001b[0m')
+
+            if self.check_set_has_ended(joints_dict, self.most_visible_side):
+                feedback = [('FEEDBACK', 'Set has ended')]
+
+                self.initialise_state()
+                self.form_analyser.initialise_state()
+            else:
+                feedback = self.get_feedback_based_on_joints_dict(joints_dict)
+        else:
+            left_joints = [joints_dict['left_' + j] for j in self.form_analyser.main_joints]
+            right_joints = [joints_dict['right_' + j] for j in self.form_analyser.main_joints]
+
+            if self.form_analyser.check_confidence(
+                self.form_analyser.min_confidence_threshold,
+                left_joints
+            ) or self.form_analyser.check_confidence(
+                self.form_analyser.min_confidence_threshold,
+                right_joints
+            ):
+                time_remaining = self.stationary_duration
+                if self.stationary_start_time is not None:
+                    time_remaining = round(self.stationary_duration - time.time() + self.stationary_start_time, 2)
+
+                feedback = [('FEEDBACK', f'Stay still for {time_remaining} seconds to start set')]
+
+                most_visible_side = self.form_analyser.get_most_visible_side(
+                    left_joints,
+                    right_joints,
+                    set_begun=False
+                )
+                if self.check_set_has_begun(joints_dict, most_visible_side):
+                    self.most_visible_side = self.form_analyser.get_most_visible_side(
+                        left_joints,
+                        right_joints,
+                        set_begun=True
+                    )
+                    self.set_has_begun = True
+                    self.joint_buffer = []
+            else:
+                feedback = [('FEEDBACK', 'Insufficient joints visible')]
+
+                self.stationary_start_time = None
+                self.joint_buffer = []
+
+        # NOTE: this slows down performance
         if show_output:
-            # NOTE: this slows down performance
             self.mp_drawing.draw_landmarks(
                 frame,
                 pose_landmarks,
@@ -81,27 +155,23 @@ class SquatFormAnalyser():
             cv2.imshow('Live Stream', frame)
             cv2.waitKey(1)
 
-        return feedback, suc
+        return feedback, success
 
 
-    def get_feedback_from_frame(self, frame):
-        pose_landmarks = self.pose_detector.make_prediction(frame)
-        if pose_landmarks is None:
-            return [('FEEDBACK', 'Not Detected')], pose_landmarks
-
-        if self.most_visible_side == '':
-            self.most_visible_side = self.form_analyser.get_most_visible_side(pose_landmarks)
-            if self.most_visible_side == '':
-                return [('FEEDBACK', 'Insufficient Joint Data')], pose_landmarks
-
-        # TODO: get joints that are needed once and then use for all checks below
-        # TODO: Adjust form criteria based on orientation
+    def get_feedback_based_on_joints_dict(self, joints_dict):
         # TODO: redefine angles for stages and move into form_thresholds
+        # TODO: Adjust form criteria based on orientation
         # TODO: make sure every check checks confidence of joints e.g. hips are level
 
-        orientation, main_joint_dict = self.form_analyser.get_orientation_and_joint_dict(pose_landmarks)
+        orientation = self.form_analyser.get_orientation(
+            joints_dict['left_shoulder'],
+            joints_dict['right_shoulder'],
+            joints_dict['left_hip'],
+            joints_dict['right_hip'],
+            self.form_thresholds['face_on']
+        )
         most_visible_main_joints = {
-            joint: main_joint_dict[self.most_visible_side + joint] for joint in [
+            joint: joints_dict[self.most_visible_side + joint] for joint in [
                 'ankle',
                 'knee',
                 'hip',
@@ -151,23 +221,20 @@ class SquatFormAnalyser():
         # Determine Feedback (This section needs a lot of work)
         if hip_vertical_angle is not None:
             hip_vertical_angle = round(hip_vertical_angle)
-            if hip_vertical_angle > self.form_thresholds['hip_angle_range'][1]:
+            if hip_vertical_angle > self.form_thresholds['safe_hip_angle_range'][1]:
                 final_feedback.append(('FEEDBACK', 'Bend Backwards'))
             # TODO: fix this
             # elif hip_vertical_angle > self.form_thresholds['hip'][0]:
             #     current_form_text.append('Bend Forward')
 
-        # safe_ankle_angle
-        # knee_transition_angle_range
-        # safe_knee_angle
-        # hip_angle_range
-
         if knee_vertical_angle is not None:
             knee_vertical_angle = round(knee_vertical_angle)
+            # TODO: move this above to where state_sequence stuff is done?
             if self.form_thresholds['knee_transition_angle_range'][0] < knee_vertical_angle < self.form_thresholds['knee_transition_angle_range'][1] and \
                 self.state_sequence.count(TRANSITION) == 1:
                 # TODO: redo this to identify if eccentric was complete without good depth
-                    # Then return ('FEEDBACK', 'Bad depth, try go lower')
+                    # Then return ('FEEDBACK', 'Bad depth, try go lower...')
+
                 final_feedback.append(('FEEDBACK', 'Lower Hips'))
             elif knee_vertical_angle > self.form_thresholds['safe_knee_angle']:
                 # 'Deep Squat' # TODO: what is this comment?
@@ -175,40 +242,52 @@ class SquatFormAnalyser():
 
         if self.state_sequence[-1] == BOTTOM:
             if not self.form_analyser.check_joints_are_level(
-                main_joint_dict['left_knee'],
-                main_joint_dict['right_knee'],
+                joints_dict['left_knee'],
+                joints_dict['right_knee'],
                 self.form_thresholds['knee_level']
             ):
                 final_feedback.append(('FEEDBACK', 'Knees are not level'))
 
         if orientation == 'face_on':
+            # TODO: move this out of orientation check?
+            # TODO: is this necessary?
             if not self.form_analyser.check_joints_are_level(
-                main_joint_dict['left_shoulder'],
-                main_joint_dict['right_shoulder'],
+                joints_dict['left_ankle'],
+                joints_dict['right_ankle'],
+                self.form_thresholds['ankle_level']
+            ):
+                final_feedback.append(('FEEDBACK', 'Ankles are not level'))
+
+            # TODO: move this out of orientation check?
+            if not self.form_analyser.check_joints_are_level(
+                joints_dict['left_shoulder'],
+                joints_dict['right_shoulder'],
                 self.form_thresholds['shoulder_level']
             ):
                 final_feedback.append(('FEEDBACK', 'Shoulders are not level'))
+
+            # TODO: move this out of orientation check?
             if not self.form_analyser.check_joints_are_level(
-                main_joint_dict['left_hip'],
-                main_joint_dict['right_hip'],
+                joints_dict['left_hip'],
+                joints_dict['right_hip'],
                 self.form_thresholds['hip_level']
             ):
                 final_feedback.append(('FEEDBACK', 'Hips are not level'))
 
             if not self.form_analyser.check_joints_are_vertically_aligned(
-                main_joint_dict['left_hip'],
-                main_joint_dict['right_hip'],
-                main_joint_dict['left_ankle'],
-                main_joint_dict['right_ankle'],
+                joints_dict['left_hip'],
+                joints_dict['right_hip'],
+                joints_dict['left_ankle'],
+                joints_dict['right_ankle'],
                 self.form_thresholds['hip_vertically_aligned']
             ):
                 final_feedback.append(('FEEDBACK', 'Hips are not vertically aligned with feet'))
 
             if not self.form_analyser.check_joints_are_vertically_aligned(
-                main_joint_dict['left_shoulder'],
-                main_joint_dict['right_shoulder'],
-                main_joint_dict['left_ankle'],
-                main_joint_dict['right_ankle'],
+                joints_dict['left_shoulder'],
+                joints_dict['right_shoulder'],
+                joints_dict['left_ankle'],
+                joints_dict['right_ankle'],
                 self.form_thresholds['shoulder_vertically_aligned']
             ):
                 final_feedback.append(('FEEDBACK', 'Shoulders are not vertically aligned with feet'))
@@ -216,10 +295,69 @@ class SquatFormAnalyser():
             # TODO: this
             pass
 
+        # TODO: make this more robust of set stage measurement fails
         if self.squat_end_time < self.squat_start_time:
             self.squat_duration = round(time.time() - self.squat_start_time, 2)
 
-        return final_feedback, pose_landmarks
+        return final_feedback
+
+
+    def check_set_has_begun(self, joints_dict, most_visible_side):
+        most_visible_main_joints = {
+            joint_name: joints_dict[most_visible_side + joint_name]
+            for joint_name in self.form_analyser.main_joints
+        }
+
+        _, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
+
+        # TODO: fix this
+
+        if self.form_analyser.joints_in_starting_position(
+            knee_vertical_angle,
+            hip_vertical_angle,
+            self.form_thresholds['knee_angle_range'],
+            self.form_thresholds['hip_angle_range']
+        ):
+            self.joint_buffer.append(most_visible_main_joints)
+
+            if len(self.joint_buffer) < self.joint_buffer_size:
+                return False
+
+            if len(self.joint_buffer) > self.joint_buffer_size:
+                self.joint_buffer.pop(0)
+
+            if self.joint_buffer_is_stationary():
+                if self.stationary_start_time is None:
+                    self.stationary_start_time = time.time()
+                elif time.time() - self.stationary_start_time > self.stationary_duration:
+                    return True
+            else:
+                self.stationary_start_time = None
+                self.joint_buffer = []
+                return False
+        else:
+            self.stationary_start_time = None
+            self.joint_buffer = []
+
+        return False
+
+
+    def joint_buffer_is_stationary(self):
+        for joint_name in self.form_analyser.main_joints:
+            j1 = self.joint_buffer[0][joint_name]
+            j2 = self.joint_buffer[1][joint_name]
+
+            distance = ((j1.x - j2.x)**2 + (j1.y - j2.y)**2 + (j1.z - j2.z)**2)**0.5
+            print(distance)
+            if distance > self.form_thresholds['stationary']:
+                return False
+        print()
+
+        return True
+
+
+    def check_set_has_ended():
+        exit('\u001b[41m check_set_has_ended not implemented \u001b[0m')
 
 
     def draw_text(self, img, text,
