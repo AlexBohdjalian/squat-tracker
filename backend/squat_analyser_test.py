@@ -20,7 +20,7 @@ videos = [
 
 any_test_failed = False
 for vid, (actual_form_quality, actual_rep_count) in videos:
-    form_analyser = sa2.SquatFormAnalyser()
+    form_analyser = sa2.SquatFormAnalyser(use_advanced_criteria=True)
     cap = cv2.VideoCapture(vid)
 
     print(BLUE, f'Assessing: {vid}', NORMAL)

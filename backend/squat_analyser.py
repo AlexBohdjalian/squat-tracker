@@ -12,7 +12,7 @@ NORMAL = '\u001b[0m'
 YELLOW = '\u001b[43m'
 
 class SquatFormAnalyser():
-    def __init__(self):
+    def __init__(self, use_advanced_criteria=False):
         self.pose_detector = MediaPipeDetector()
         self.form_analyser = MediaPipe_To_Form_Interpreter()
         self.frame_stack = 2
@@ -23,23 +23,28 @@ class SquatFormAnalyser():
         self.text_colour = (219, 123, 3)
         self.bad_form_colour = (0, 0, 255)
         self.form_thresholds_beginner = {
-            'ankle': 45, # TODO: Tune, rename/clarify this
-            'knee': (50, 70, 95), # TODO: Tune, rename/clarify this
-            'hip': (10, 50), # TODO: Tune, rename/clarify this
-            'shoulder_level': 0.05,
-            'hip_level': 0.05, # TODO: Tune this
-        }
-        self.form_thresholds_advanced = {
-            'ankle': 30, # TODO: Tune, rename/clarify this
-            'knee': (50, 80, 115), # TODO: Tune, rename/clarify this
-            'hip': (15, 50), # TODO: Tune, rename/clarify this
+            'safe_ankle_angle': 45, # TODO: Tune this
+            'knee_transition_angle_range': (50, 70), # TODO: Tune this
+            'safe_knee_angle': 95, # TODO: Tune this
+            'hip_angle_range': (10, 50), # TODO: Tune this
             'shoulder_level': 0.05,
             'hip_level': 0.05, # TODO: Tune this
             'knee_level': 0.05, # TODO: Tune this
             'hip_vertically_aligned': 0.04, # TODO: Tune this
             'shoulder_vertically_aligned': 0.075, # TODO: Tune this
         }
-        self.form_thresholds = self.form_thresholds_advanced
+        self.form_thresholds_advanced = {
+            'safe_ankle_angle': 30, # TODO: Tune this
+            'knee_transition_angle_range': (50, 80), # TODO: Tune this
+            'safe_knee_angle': 115, # TODO: Tune this
+            'hip_angle_range': (15, 50), # TODO: Tune this
+            'shoulder_level': 0.05,
+            'hip_level': 0.05, # TODO: Tune this
+            'knee_level': 0.05, # TODO: Tune this
+            'hip_vertically_aligned': 0.04, # TODO: Tune this
+            'shoulder_vertically_aligned': 0.075, # TODO: Tune this
+        }
+        self.form_thresholds = self.form_thresholds_advanced if use_advanced_criteria else self.form_thresholds_beginner
         self.state_sequence = [STANDING]
         self.most_visible_side = ''
         self.squat_duration = 0
@@ -49,9 +54,8 @@ class SquatFormAnalyser():
 
 
     def analyse(self, cap, show_output=False):
-        # TODO: check cap is valid? (uncomment below)
-        # if isinstance(cap, str) and cap != '0':
-        #     raise ValueError('Invalid video source')
+        if cap == 0:
+            raise ValueError('Invalid video source')
 
         suc, frame = cap.read()
         if not suc:
@@ -106,7 +110,11 @@ class SquatFormAnalyser():
         }
 
         final_feedback = []
-        knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
+        ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
+        if ankle_vertical_angle is not None:
+            # TODO: this
+            pass
+
         if knee_vertical_angle is not None:
             if self.state_sequence != [STANDING] and knee_vertical_angle <= 32:
                 if self.state_sequence[-1] == TRANSITION:
@@ -143,21 +151,27 @@ class SquatFormAnalyser():
         # Determine Feedback (This section needs a lot of work)
         if hip_vertical_angle is not None:
             hip_vertical_angle = round(hip_vertical_angle)
-            if hip_vertical_angle > self.form_thresholds['hip'][1]:
+            if hip_vertical_angle > self.form_thresholds['hip_angle_range'][1]:
                 final_feedback.append(('FEEDBACK', 'Bend Backwards'))
             # TODO: fix this
             # elif hip_vertical_angle > self.form_thresholds['hip'][0]:
             #     current_form_text.append('Bend Forward')
 
+        # safe_ankle_angle
+        # knee_transition_angle_range
+        # safe_knee_angle
+        # hip_angle_range
+
         if knee_vertical_angle is not None:
             knee_vertical_angle = round(knee_vertical_angle)
-            if self.form_thresholds['knee'][0] < knee_vertical_angle < self.form_thresholds['knee'][1] and \
-                self.state_sequence.count('s2') == 1:
+            if self.form_thresholds['knee_transition_angle_range'][0] < knee_vertical_angle < self.form_thresholds['knee_transition_angle_range'][1] and \
+                self.state_sequence.count(TRANSITION) == 1:
+                # TODO: redo this to identify if eccentric was complete without good depth
+                    # Then return ('FEEDBACK', 'Bad depth, try go lower')
                 final_feedback.append(('FEEDBACK', 'Lower Hips'))
-            elif knee_vertical_angle > self.form_thresholds['knee'][2]:
-                # 'Deep Squat' # what is this comment?
-                limit = self.form_thresholds['knee'][2]
-                final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {limit}'))
+            elif knee_vertical_angle > self.form_thresholds['safe_knee_angle']:
+                # 'Deep Squat' # TODO: what is this comment?
+                final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {self.form_thresholds["safe_knee_angle"]}'))
 
         if self.state_sequence[-1] == BOTTOM:
             if not self.form_analyser.check_joints_are_level(

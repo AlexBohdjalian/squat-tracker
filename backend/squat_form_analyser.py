@@ -157,7 +157,7 @@ class MediaPipe_To_Form_Interpreter():
 
     def get_main_joint_vertical_angles(self, joints):
         return [
-            # self.__get_angle_with_conf(self.min_confidence_threshold, [joints['ankle'], joints['knee']]),
+            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['ankle'], joints['knee']]),
             self.__get_angle_with_conf(self.min_confidence_threshold, [joints['knee'], joints['hip']]),
             self.__get_angle_with_conf(self.min_confidence_threshold, [joints['hip'], joints['shoulder']])
         ]

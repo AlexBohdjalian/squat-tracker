@@ -59,7 +59,7 @@ ffmpeg_args = [
 
 
 # Declare constants and variables for feedback
-form_analyser = sa.SquatFormAnalyser()
+form_analyser = sa.SquatFormAnalyser(use_advanced_criteria=True)
 port = 5000
 current_f = []
 
