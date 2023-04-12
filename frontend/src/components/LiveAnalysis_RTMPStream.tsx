@@ -43,7 +43,7 @@ export default function App() {
   const settings: ISettingsState = {
     resolution: '720p',
     framerate: 10, // TODO: try higher fps here
-    videoBitrate: 1400,
+    videoBitrate: 1400, // TODO: remove and make automatic? see how this impacts speed
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
   };
@@ -116,9 +116,12 @@ export default function App() {
       ref.current
         ?.startStreaming(settings.streamKey, settings.rtmpEndpoint)
         .then((_: boolean) => {
+          console.log('Stream started!')
           setStreaming(true);
         })
-        .catch((_: any) => {
+        .catch((e: any) => {
+          console.log('Stream failed!')
+          console.log(e)
           setStreaming(false);
         });
     }
@@ -153,6 +156,7 @@ export default function App() {
         onConnectionFailed={(reason: string) => {
           console.log('Received onConnectionFailed: ' + reason);
           setStreaming(false);
+          setFormFeedback('');
         }}
         onDisconnect={() => {
           console.log('Received onDisconnect');

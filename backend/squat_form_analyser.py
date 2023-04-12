@@ -45,9 +45,14 @@ class MediaPipe_To_Form_Interpreter():
             'left_foot_index': 31,
             'right_foot_index': 32
         }
+        self.VerticalBase = namedtuple('VerticalBase', ['x', 'y', 'z', 'visibility'])
         self.most_visible_side = []
         self.orientation = []
-        self.VerticalBase = namedtuple('VerticalBase', ['x', 'y', 'z', 'visibility'])
+
+
+    def initialise_state(self):
+        self.most_visible_side = []
+        self.orientation = []
 
 
     def __calc_angle(self, joints):

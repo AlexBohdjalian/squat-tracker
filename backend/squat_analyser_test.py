@@ -9,12 +9,14 @@ GREEN = '\u001b[32m'
 BLUE = '\u001b[34m'
 
 videos = [
-    ('./assets/goblet_squat.mp4', ('GOOD', 3)),
-    ('./assets/barbell_back_squat.mp4', ('GOOD', 11)),
-    ('./assets/barbell_front_squat.mp4', ('GOOD', 11)),
-    # 'backend/assets/dan_squat.mp4',
-    # 'backend/assets/me_squat.mp4',
+    ('./assets/goblet_squat_paused_start.mp4', ('GOOD', 3)),
+    ('./assets/goblet_squat.mp4', ('BAD', 0)), # No pause at start so set doesn't start
+    ('./assets/barbell_back_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
+    ('./assets/barbell_front_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
+    # 'backend/assets/dan_squat.mp4',# TODO: probably remove
+    # 'backend/assets/me_squat.mp4', # TODO: probably remove
     # TODO: need some bad form videos
+    # TODO: edit videos to have pause at start so check_set_has_begun passes
 ]
 
 
