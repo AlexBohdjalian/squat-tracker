@@ -68,7 +68,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
 
         try {
           // think about what data should be received and how to display
-          // TODO: consider using filestream here to improve speed
+          // TODO: consider using file-stream here to improve speed
           // TODO: or, use this https://narainsreehith.medium.com/upload-image-video-to-flask-backend-from-react-native-app-expo-app-1aac5653d344
           const { data } = await axios.post('http://192.168.0.28:5000/process_video', {
             'video': base64VideoData

@@ -24,7 +24,7 @@ def process_frame():
 def process_video():
     # Receive the data in chunks
         # create some fe logic to determine how many frames are sent per chunk and include the count in the header
-        # recieve the chunks, write to video file
+        # receive the chunks, write to video file
         # process, send back
         # make asynchronous
 
