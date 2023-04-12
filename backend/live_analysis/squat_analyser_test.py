@@ -8,17 +8,18 @@ NORMAL = '\u001b[0m'
 RED = '\u001b[31m'
 GREEN = '\u001b[32m'
 BLUE = '\u001b[34m'
+RED_BG = '\u001b[41m'
 
 videos = [
-    # (0, ('', 0)),
     ('../assets/goblet_squat_paused_start.mp4', ('GOOD', 3)),
-    ('../assets/goblet_squat.mp4', ('BAD', 0)), # No pause at start so set doesn't start
-    # ('./assets/barbell_back_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
-    # ('./assets/barbell_front_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
-    # 'backend/assets/dan_squat.mp4',# TODO: probably remove
-    # 'backend/assets/me_squat.mp4', # TODO: probably remove
+    # ('../assets/barbell_back_squat_paused_start.mp4', ('GOOD', 11)), # TODO: implement side_on analysis
+    ('../assets/barbell_front_squat_paused_start.mp4', ('GOOD', 11)), # NOTE: this video changes perspectives, split video up
+    ('../assets/goblet_squat.mp4', ('BAD', 0)),  # NOTE: no paused start, so fail
+    ('./assets/barbell_back_squat.mp4', ('BAD', 0)),  # NOTE: no paused start, so fail
+    ('./assets/barbell_front_squat.mp4', ('BAD', 0)),  # NOTE: no paused start, so fail
     # TODO: need some bad form videos
-    # TODO: edit videos to have pause at start so check_set_has_begun passes
+        # landmarks disappear for significant amount of time
+        # ...
 ]
 
 
@@ -26,21 +27,24 @@ any_test_failed = False
 for vid, (actual_form_quality, actual_rep_count) in videos:
     form_analyser = sa2.SquatFormAnalyser(use_advanced_criteria=True)
     cap = cv2.VideoCapture(vid)
+    if not cap.isOpened():
+        cap.release()
+        print(f'{RED_BG} Failed to open video: {vid} {NORMAL}')
+        exit()
 
     print(BLUE, f'Assessing: {vid}', NORMAL)
-    process_start_time = time.time()
 
     current_test_failed = False
     frame_index = 0
     prev_feedback = ''
     all_f = []
     state_sequences = []
+
+    process_start_time = time.time()
     while True:
         feedback, success = form_analyser.analyse(cap, show_output=False)
         if not success:
             break
-
-        # TODO: modify from here on so that tag is checked in feedback
 
         if feedback != prev_feedback:
             prev_feedback = feedback
@@ -50,7 +54,6 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
                         state_sequences.append(f)
                     else:
                         all_f.append((frame_index, f))
-                # print(f)
 
         frame_index += 1
 
@@ -66,29 +69,23 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
         print(RED, 'Reps:', len(state_sequences), 'Actual:', actual_rep_count, NORMAL)
         any_test_failed = current_test_failed = True
 
-
     if len(all_f) == 0:
         print(BLUE, 'No Problems Found In Form', NORMAL)
     else:
-        print(BLUE, '\nSome problems were found:', NORMAL)
+        print(BLUE, 'Some problems were found:', NORMAL)
 
-        output = []
         start = all_f[0][0]
         end = all_f[0][0]
         msg = all_f[0][1]
-
         for feedback in range(1, len(all_f)):
             if all_f[feedback][0] == end + 1 and all_f[feedback][1] == msg:
                 end = all_f[feedback][0]
             else:
-                output.append((start, end, msg))
+                print(f'({start}, {end}): {msg}')
                 start = all_f[feedback][0]
                 end = all_f[feedback][0]
                 msg = all_f[feedback][1]
-        output.append((start, end, msg))
-
-        for i in output:
-            print(i)
+        print(f'({start}, {end}): {msg}')
 
     if vid != 0:
         fps = cap.get(cv2.CAP_PROP_FPS)
