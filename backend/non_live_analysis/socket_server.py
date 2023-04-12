@@ -3,8 +3,7 @@ import cv2
 import base64
 import os
 import numpy as np
-import time
-from squat_analysis_be_v2 import process_video_from_fe, process_frame_from_fe
+from squat_analyser import process_video_from_fe, process_frame_from_fe
 
 
 app = flask.Flask(__name__)

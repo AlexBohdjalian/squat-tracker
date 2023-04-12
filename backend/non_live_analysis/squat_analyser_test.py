@@ -1,4 +1,4 @@
-from squat_analysis_be_v2 import process_video_from_fe
+from squat_analyser import process_video_from_fe
 
 if __name__ == "__main__":
     videos = []

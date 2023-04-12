@@ -4,7 +4,7 @@ import time
 import mediapipe as mp
 from imutils.video import FileVideoStream
 from mediapipe_estimator import MediaPipeDetector
-from squat_check_v2 import SquatFormAnalyzer
+from squat_form_analyser import SquatFormAnalyzer
 
 
 pose_detector = MediaPipeDetector()

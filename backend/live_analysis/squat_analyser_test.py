@@ -11,8 +11,8 @@ BLUE = '\u001b[34m'
 
 videos = [
     # (0, ('', 0)),
-    ('./assets/goblet_squat_paused_start.mp4', ('GOOD', 3)),
-    ('./assets/goblet_squat.mp4', ('BAD', 0)), # No pause at start so set doesn't start
+    ('../assets/goblet_squat_paused_start.mp4', ('GOOD', 3)),
+    ('../assets/goblet_squat.mp4', ('BAD', 0)), # No pause at start so set doesn't start
     # ('./assets/barbell_back_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
     # ('./assets/barbell_front_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
     # 'backend/assets/dan_squat.mp4',# TODO: probably remove
