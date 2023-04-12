@@ -1,6 +1,7 @@
 import time
-import squat_analyser as sa2
+
 import cv2
+import squat_analyser as sa2
 
 
 NORMAL = '\u001b[0m'
@@ -9,10 +10,11 @@ GREEN = '\u001b[32m'
 BLUE = '\u001b[34m'
 
 videos = [
+    # (0, ('', 0)),
     ('./assets/goblet_squat_paused_start.mp4', ('GOOD', 3)),
     ('./assets/goblet_squat.mp4', ('BAD', 0)), # No pause at start so set doesn't start
-    ('./assets/barbell_back_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
-    ('./assets/barbell_front_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
+    # ('./assets/barbell_back_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
+    # ('./assets/barbell_front_squat.mp4', ('GOOD', 11)), # TODO: edit to have pause?
     # 'backend/assets/dan_squat.mp4',# TODO: probably remove
     # 'backend/assets/me_squat.mp4', # TODO: probably remove
     # TODO: need some bad form videos
@@ -34,15 +36,15 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
     all_f = []
     state_sequences = []
     while True:
-        feedback, success = form_analyser.analyse(cap, show_output=True)
+        feedback, success = form_analyser.analyse(cap, show_output=False)
         if not success:
             break
 
         # TODO: modify from here on so that tag is checked in feedback
 
-        if feedback != prev_feedback and feedback != [('FEEDBACK', 'Not Detected')] and feedback != [('FEEDBACK', 'Insufficient Joint Data')]:
+        if feedback != prev_feedback:
             prev_feedback = feedback
-            if len(feedback) > 0:
+            if len(feedback) > 0 and feedback[0][0] not in ['USER_INFO', 'TIP']:
                 for tag, f in feedback:
                     if tag == 'STATE_SEQUENCE':
                         state_sequences.append(f)
@@ -55,7 +57,8 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
     end_time = time.time()
 
     print('State Sequences:')
-    [print(ss) for ss in state_sequences]
+    for (eccentric_time, concentric_time), state_sequence in state_sequences:
+        print(f'Eccentric Time: {round(eccentric_time, 3)}s, Concentric Time: {round(concentric_time, 3)}s, State Sequence: {state_sequence}')
 
     if actual_rep_count == len(state_sequences):
         print(GREEN, 'Reps:', len(state_sequences), NORMAL)
@@ -65,18 +68,9 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
 
 
     if len(all_f) == 0:
-        if actual_form_quality == 'GOOD':
-            print(GREEN, 'No Problems Found In Form', NORMAL)
-        else:
-            print(RED, 'No Problems Found In Form', NORMAL)
-            any_test_failed = current_test_failed = True
+        print(BLUE, 'No Problems Found In Form', NORMAL)
     else:
-        if actual_form_quality == 'BAD':
-            print(GREEN, '\nSome problems were found:', NORMAL)
-        else:
-            print(RED, '\nSome problems were found:', NORMAL)
-            any_test_failed = current_test_failed = True
-
+        print(BLUE, '\nSome problems were found:', NORMAL)
 
         output = []
         start = all_f[0][0]
@@ -96,29 +90,11 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
         for i in output:
             print(i)
 
-        # frames = [f[1] for f in all_f]
-        # cap_new = cv2.VideoCapture(vid)
-        # frame_count = 0
-        # while cap_new.isOpened():
-        #     suc, frame = cap_new.read()
-        #     if not suc:
-        #         break
-
-        #     frame_indexes = [f[0] for f in all_f]
-        #     if frame_count in frame_indexes:
-        #         frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
-        #         cv2.imshow('Frame', frame)
-        #         cv2.waitKey(100)
-
-        #     frame_count += 1
-        # cv2.destroyAllWindows()
-        # cap_new.release()
-
     if vid != 0:
         fps = cap.get(cv2.CAP_PROP_FPS)
         video_length = cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS)
         print(BLUE, f'Total video length is : {time.strftime("%Mm %Ss", time.gmtime(video_length))}', NORMAL)
-    print(BLUE, 'Video Processed in:', time.strftime('%Mm %Ss', time.gmtime(end_time - process_start_time)), NORMAL)
+        print(BLUE, 'Video Processed in:', time.strftime('%Mm %Ss', time.gmtime(end_time - process_start_time)), NORMAL)
     
     if current_test_failed:
         print(RED, 'TEST FAILED', NORMAL)

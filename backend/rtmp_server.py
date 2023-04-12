@@ -9,13 +9,10 @@ import squat_analyser as sa
 from flask import Flask, jsonify
 
 
-# TODO: review the live low latency stream to see the quality
-# TODO: figure out how to make opencv open the stream / demo on another computer to see speeds
-# TODO: implement button in app to intialise this server or, allow this server to be constantly running and not require simultaneous start
-# TODO: implement threading?
-    # thread1 grabs frame if prev frame is processed or empty
-    # thread2 processes frame
 # TODO: final summary of workout? Or make it simultaneously record video for post-processing?
+
+NORMAL = '\u001b[0m'
+YELLOW_BG = '\u001b[43m'
 
 
 # Declare constants for rtmp stream
@@ -33,7 +30,7 @@ ffmpeg_args = [
     '-i', video_stream_input,
     '-copyts',
     '-fps_mode', 'cfr',  # Ensure that video frames are synchronized
-    '-r', '10',  # Set the output frame rate to 10 FPS
+    '-r', '10',  # Set the output frame rate to 10 FPS # TODO: get this based in input stream
     '-c:v', 'libx264',
     '-preset', 'ultrafast',
     '-tune', 'zerolatency',
@@ -41,21 +38,6 @@ ffmpeg_args = [
     '-listen', '1',
     local_rtmp_endpoint
 ]
-# ffmpeg_args = [
-#     'ffmpeg',
-#     '-flags', 'low_delay',
-#     '-re',
-#     '-f', 'flv',
-#     '-listen', '1',
-#     '-i', video_stream_input,
-#     '-copyts',
-#     '-fps_mode', '1',
-#     '-preset', 'ultrafast',
-#     '-c', 'copy',
-#     '-f', 'flv',
-#     '-listen', '1',
-#     local_rtmp_endpoint
-# ]
 
 
 # Declare constants and variables for feedback
@@ -81,8 +63,8 @@ flask_thread.daemon = True
 flask_thread.start()
 
 
-# TODO: put this into a request e.g. /start-server and in component,
-    # add request to handleStreaming
+# TODO: put this into a request e.g. /start-server and in component add request to endpoint?
+
 # Begin re-streaming to a local endpoint
 proc1 = subprocess.Popen(
     ffmpeg_args,
@@ -105,25 +87,16 @@ print('Stream started!')
 try:
     while True:
         # Process the frame
-        immediate_f, success = form_analyser.analyse(
-            cap,
-            show_output=False
-        )
-
-        # Break if stream has ended
+        immediate_f, success = form_analyser.analyse(cap, show_output=False)
         if not success:
             break
 
-        # Logging
         if immediate_f not in [[], current_f]:
             for tag, f in immediate_f:
-                if tag == 'STATE_SEQUENCE':
-                    print('State Sequence:', f)
-                elif tag == 'FEEDBACK' and \
-                    f not in ['Not Detected', 'Insufficient Joint Data']:
-                    print('Form Feedback:', f)
+                if tag in ['FEEDBACK', 'STATE_SEQUENCE']:
+                    print(f'{tag}: {f}')
                 else:
-                    print('Unhandled Case:', tag, f)
+                    print(f'{YELLOW_BG} {tag}: {f} {NORMAL}')
 
         current_f = immediate_f
 

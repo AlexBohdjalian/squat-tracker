@@ -21,7 +21,4 @@ class MediaPipeDetector:
 
     def make_prediction(self, image):
         image.flags.writeable = False
-        results = self.pose.process(image)
-
-        # Only care about pose_positions relative to the body, not the world
-        return results.pose_landmarks
+        return self.pose.process(image).pose_landmarks

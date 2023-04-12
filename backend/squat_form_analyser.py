@@ -1,7 +1,6 @@
 from collections import Counter, namedtuple
 
 import numpy as np
-from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmark
 
 
 class MediaPipe_To_Form_Interpreter():
@@ -55,15 +54,14 @@ class MediaPipe_To_Form_Interpreter():
         self.orientation = []
 
 
-    def __calc_angle(self, joints):
-        point1, point2, point3 = joints
-        radians = np.arctan2(point3.y-point2.y, point3.x-point2.x) \
-                - np.arctan2(point1.y-point2.y, point1.x-point2.x)
-        angle = np.abs(radians*180.0/np.pi)
-        
+    def __calc_angle(self, joint1, joint2, joint3):
+        radians = np.arctan2(joint3.y-joint2.y, joint3.x-joint2.x) \
+                - np.arctan2(joint1.y-joint2.y, joint1.x-joint2.x)
+
+        angle = abs(np.rad2deg(radians))
         if angle > 180.0:
             angle = 360-angle
-            
+
         return angle
 
 
@@ -100,19 +98,24 @@ class MediaPipe_To_Form_Interpreter():
 
 
     def get_orientation(self, left_shoulder, right_shoulder, left_hip, right_hip, threshold):
-        if isinstance(self.orientation, type([])) and len(self.orientation) < 10:
+        """
+        Determines the orientation of the user based on shoulder and hip depth.
+
+        After 50 measurements an average is taken of the observations to improve performance.
+        """
+        if isinstance(self.orientation, type([])):
             # TODO: check confidence
 
             shoulder_depth_difference = abs(left_shoulder.z - right_shoulder.z)
             hip_depth_difference = abs(left_hip.z - right_hip.z)
 
-            if shoulder_depth_difference < threshold and hip_depth_difference < threshold:
+            if max(shoulder_depth_difference, hip_depth_difference) < threshold:
                 self.orientation.append("face_on")
             else:
                 self.orientation.append("side_on")
 
             most_common, _ = Counter(self.orientation).most_common(1)[0]
-            if len(self.orientation) == 10:
+            if len(self.orientation) == 50:
                 self.orientation = most_common
             else:
                 return most_common
@@ -120,26 +123,15 @@ class MediaPipe_To_Form_Interpreter():
         return self.orientation
 
 
-    def __get_angle_with_conf(self, confidence_threshold, joints):
-        primary_joint = joints[0]
-        vertical = self.VerticalBase(
-            primary_joint.x,
-            0,
-            primary_joint.z,
-            primary_joint.visibility
-        )
-
-        joints.insert(0, vertical)
-        if self.check_confidence(confidence_threshold, joints):
-            return self.__calc_angle(joints)
-        return None
-
-
     def get_main_joint_vertical_angles(self, joints):
+        ankle_vertical = self.VerticalBase(joints['ankle'].x, 0, joints['ankle'].z, joints['ankle'].visibility)
+        knee_vertical = self.VerticalBase(joints['knee'].x, 0, joints['knee'].z, joints['knee'].visibility)
+        hip_vertical = self.VerticalBase(joints['hip'].x, 0, joints['hip'].z, joints['hip'].visibility)
+
         return [
-            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['ankle'], joints['knee']]),
-            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['knee'], joints['hip']]),
-            self.__get_angle_with_conf(self.min_confidence_threshold, [joints['hip'], joints['shoulder']])
+            self.__calc_angle(ankle_vertical, joints['ankle'], joints['knee']),
+            self.__calc_angle(knee_vertical, joints['knee'], joints['hip']),
+            self.__calc_angle(hip_vertical, joints['hip'], joints['shoulder'])
         ]
 
 
