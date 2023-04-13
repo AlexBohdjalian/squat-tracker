@@ -11,12 +11,13 @@ BLUE = '\u001b[34m'
 RED_BG = '\u001b[41m'
 
 videos = [
-    ('../assets/goblet_squat_paused_start.mp4', ('GOOD', 3)),
-    # ('../assets/barbell_back_squat_paused_start.mp4', ('GOOD', 11)), # TODO: implement side_on analysis
-    ('../assets/barbell_front_squat_paused_start.mp4', ('GOOD', 11)), # NOTE: this video changes perspectives, split video up
-    ('../assets/goblet_squat.mp4', ('BAD', 0)),  # NOTE: no paused start, so fail
-    ('./assets/barbell_back_squat.mp4', ('BAD', 0)),  # NOTE: no paused start, so fail
-    ('./assets/barbell_front_squat.mp4', ('BAD', 0)),  # NOTE: no paused start, so fail
+    { 'path': '../assets/goblet_squat_paused_start.mp4', 'any_problems': False, 'reps': 3 },
+    { 'path': '../assets/barbell_back_squat_paused_start.mp4', 'any_problems': False, 'reps': 11 },
+    # { 'path': '../assets/barbell_front_squat_paused_start.mp4', 'any_problems': False, 'reps': 11 },
+        # NOTE: this video changes perspectives (Not possible in context of software), split video up
+    { 'path': '../assets/goblet_squat.mp4', 'any_problems': False, 'reps': 0 },
+    { 'path': '../assets/barbell_back_squat.mp4', 'any_problems': False, 'reps': 0 },
+    { 'path': '../assets/barbell_front_squat.mp4', 'any_problems': False, 'reps': 0 },
     # TODO: need some bad form videos
         # landmarks disappear for significant amount of time
         # ...
@@ -24,15 +25,15 @@ videos = [
 
 
 any_test_failed = False
-for vid, (actual_form_quality, actual_rep_count) in videos:
+for vid in videos:
     form_analyser = sa2.SquatFormAnalyser(use_advanced_criteria=True)
-    cap = cv2.VideoCapture(vid)
+    cap = cv2.VideoCapture(vid['path'])
     if not cap.isOpened():
         cap.release()
-        print(f'{RED_BG} Failed to open video: {vid} {NORMAL}')
+        print(f'{RED_BG} Failed to open video: {vid["path"]} {NORMAL}')
         exit()
 
-    print(BLUE, f'Assessing: {vid}', NORMAL)
+    print(BLUE, f'Assessing: {vid["path"]}', NORMAL)
 
     current_test_failed = False
     frame_index = 0
@@ -51,6 +52,9 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
             if len(feedback) > 0 and feedback[0][0] not in ['USER_INFO', 'TIP']:
                 for tag, f in feedback:
                     if tag == 'STATE_SEQUENCE':
+                        # TODO: check that each state sequence is valid?
+                            # times are positive
+                            # sequence is valid i.e. ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']
                         state_sequences.append(f)
                     else:
                         all_f.append((frame_index, f))
@@ -59,20 +63,32 @@ for vid, (actual_form_quality, actual_rep_count) in videos:
 
     end_time = time.time()
 
-    print('State Sequences:')
-    for (eccentric_time, concentric_time), state_sequence in state_sequences:
-        print(f'Eccentric Time: {round(eccentric_time, 3)}s, Concentric Time: {round(concentric_time, 3)}s, State Sequence: {state_sequence}')
-
-    if actual_rep_count == len(state_sequences):
+    if vid['reps'] == len(state_sequences):
         print(GREEN, 'Reps:', len(state_sequences), NORMAL)
     else:
-        print(RED, 'Reps:', len(state_sequences), 'Actual:', actual_rep_count, NORMAL)
-        any_test_failed = current_test_failed = True
+        print(RED, 'Reps:', len(state_sequences), 'Actual:', vid['reps'], NORMAL)
+
+        print(RED, 'State Sequences:', NORMAL)
+        for (e_time, c_time), s_seq in state_sequences:
+            print(f' Eccentric Time: {round(e_time, 3)}s, Concentric Time: {round(c_time, 3)}s, State Sequence: {s_seq}')
+
+        current_test_failed = True
 
     if len(all_f) == 0:
-        print(BLUE, 'No Problems Found In Form', NORMAL)
+        if vid['any_problems']:
+            print(RED, 'No Problems Found In Form', NORMAL)
+            current_test_failed = True
+        else:
+            print(GREEN, 'No Problems Found In Form', NORMAL)
+
     else:
-        print(BLUE, 'Some problems were found:', NORMAL)
+        if vid['any_problems']:
+            print(GREEN, 'Some problems were found:', NORMAL)
+        else:
+            print(RED, 'Some problems were found:', NORMAL)
+            current_test_failed = True
+
+        any_test_failed = any_test_failed or current_test_failed
 
         start = all_f[0][0]
         end = all_f[0][0]

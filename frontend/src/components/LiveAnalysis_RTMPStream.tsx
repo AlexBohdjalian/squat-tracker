@@ -42,7 +42,7 @@ export default function App() {
   // CONSTANTS
   const settings: ISettingsState = {
     resolution: '720p',
-    framerate: 10, // TODO: try higher fps here
+    framerate: 10, // TODO: try higher fps here?
     videoBitrate: 1400, // TODO: remove and make automatic? see how this impacts speed
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
@@ -67,7 +67,8 @@ export default function App() {
     try {
       const response = await axios.get(`${FEEDBACK_URL}/form-feedback`);
       const data = response.data;
-      // TODO: get timestamp of feedback and try sink camera preview to that?
+      // TODO: LOOK at tag on feedback and handle accordingly
+      // TODO: display data in longer and more sensible ways (ensure it doesn't blip)
       setFormFeedback(data.join(', '));
     } catch (error) {
       if (error.message !== "Network Error") {

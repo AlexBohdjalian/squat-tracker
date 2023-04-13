@@ -300,7 +300,7 @@ def process_video_from_fe(video_source):
 
     # ref: https://www.raynersmale.com/blog/2014/1/31/optimising-your-squat
     # TODO: Toque calculation: https://squatuniversity.com/2016/04/20/the-real-science-of-the-squat/
-    # Todo: angles: Trunk angle, Shank angle Thigh segment angle Ankle segment angle ref: https://www.quinticsports.com/squatting_technique/
+    # TODO: angles: Trunk angle, Shank angle Thigh segment angle Ankle segment angle ref: https://www.quinticsports.com/squatting_technique/
 
     # use data in squat_path, (save squat durations?), ...
     # produce graphs / summary e.g...

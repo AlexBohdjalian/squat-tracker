@@ -67,6 +67,8 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
         });
 
         try {
+          // TODO: find better way to stream video to server
+
           // think about what data should be received and how to display
           // TODO: consider using file-stream here to improve speed
           // TODO: or, use this https://narainsreehith.medium.com/upload-image-video-to-flask-backend-from-react-native-app-expo-app-1aac5653d344
@@ -117,11 +119,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
           />
           <Button
             onPress={selectAndProcessVideo}
-            title="Select Video From Gallery"
-          />
-          <Button
-            onPress={() => {}} // TODO: this
-            title="See Previous Lifts"
+            title="Select Video From Gallery (Needs Fixing)"
           />
         </View>
       </View>

@@ -15,6 +15,20 @@ YELLOW_BG = '\u001b[43m'
 RED_BG = '\u001b[41m'
 
 
+# NOTES:
+# TODO: see https://github.com/Pradnya1208/Squats-angle-detection-using-OpenCV-and-mediapipe_v1/blob/main/Squat%20pose%20estimation.ipynb
+    # for other calculations (also below)
+# TODO: below
+# Range of motion
+# Partial squat (0-40 degrees knee angle)
+# Parallel squat (hips parallel to knees or 70-100 degrees knee angle)
+# Deep squat (full range or >100 degrees knee angle)
+
+# ref: https://www.raynersmale.com/blog/2014/1/31/optimising-your-squat
+# TODO: Toque calculation: https://squatuniversity.com/2016/04/20/the-real-science-of-the-squat/
+# TODO: angles: Trunk angle, Shank angle Thigh segment angle Ankle segment angle ref: https://www.quinticsports.com/squatting_technique/
+
+
 class SquatFormAnalyser():
     def __init__(self, use_advanced_criteria=False):
         self.pose_detector = MediaPipeDetector()
@@ -29,33 +43,36 @@ class SquatFormAnalyser():
         self.general_thresholds = {
             'set_start_stationary': 0.07,  # TODO: tune this
             'set_end_stationary': 0.15,  # TODO: tune this
-            'face_on': 0.1,  # TODO: split this into shoulder/hips? and tune
+            'face_on': 0.1,
 
-            'starting_knee_angle_range': (0, 25),  # TODO: Tune this
-            'starting_hip_angle_range': (0, 25),  # TODO: Tune this
+            'starting_knee_angle_range': (65, 180),  # TODO: Tune this
+            'starting_hip_angle_range': (75, 180),  # TODO: Tune this
 
             'shoulder_level': 0.05,
-            'ankle_level': 0.05,  # TODO: Tune this
-            'knee_level': 0.05,  # TODO: Tune this
-            'hip_level': 0.05,  # TODO: Tune this
+            'ankle_level': 0.05,  # TODO: test
+            'knee_level': 0.05,  # TODO: test
+            'hip_level': 0.05,  # TODO: test
         }
         self.form_thresholds_beginner = {
-            'safe_ankle_angle': 45,  # TODO: Tune this
-            'knee_transition_angle_range': (50, 70),  # TODO: Tune this
-            'safe_knee_angle': 95,  # TODO: Tune this
-            'safe_hip_angle_range': (10, 50),  # TODO: Tune this
+            'STANDING_knee_angle_range': (62, 180),  # TODO: tune this to beginner standards
+            'TRANSITION_knee_angle_range': (28, 55),  # TODO: tune this to beginner standards
+            'BOTTOM_knee_angle_range': (0, 26),  # TODO: tune this to beginner standards
 
-            'hip_vertically_aligned': 0.04,  # TODO: Tune this
-            'shoulder_vertically_aligned': 0.075,  # TODO: Tune this
+            # 'safe_ankle_angle': 45,  # TODO: needed?
+            # 'safe_knee_angle': 95,  # TODO: needed?
+            'safe_hip_angle': 0,  # TODO: do this
+
+            'hip_vertically_aligned': 0,  # TODO: do this
+            'shoulder_vertically_aligned': 0,  # TODO: do this
         }
         self.form_thresholds_advanced = {
-            'STANDING_knee_angle': 32,  # TODO: tune this
-            'TRANSITION_knee_angle_range': (33, 65),  # TODO: tune this # (50, 80)?
-            'BOTTOM_knee_angle_range': (75, 95),  # TODO: tune this
+            'STANDING_knee_angle_range': (62, 180),  # TODO: tune this
+            'TRANSITION_knee_angle_range': (28, 55),  # TODO: tune this
+            'BOTTOM_knee_angle_range': (0, 26),  # TODO: tune this
 
-            # 'safe_ankle_angle': 30,  # TODO: Tune this
-            'safe_knee_angle': 115,  # TODO: Tune this
-            'safe_hip_angle': 50,  # TODO: Tune this
+            # 'safe_ankle_angle': 30,  # TODO: Tune this !!!!!!!!!!!!!
+            # 'safe_knee_angle': 115,  # TODO: Tune this !!!!!!!!!!!!!
+            'safe_hip_angle': 62,  # TODO: Tune this !!!!!!!!!!!!!
 
             'hip_vertically_aligned': 0.04,  # TODO: Tune this
             'shoulder_vertically_aligned': 0.075,  # TODO: Tune this
@@ -90,7 +107,7 @@ class SquatFormAnalyser():
         self.squat_mid_time = 0
         self.squat_end_time = 0
 
-    def analyse(self, cap, show_output=False):
+    def analyse(self, cap, show_output=True):
         # Get a frame
         success, frame = cap.read()
         if not success:
@@ -100,8 +117,11 @@ class SquatFormAnalyser():
         pose_landmarks = self.pose_detector.make_prediction(frame)
 
         # TODO: decide what types there are for feedback
+            # USER_INFO - ...
             # FEEDBACK - ...
-            # ...
+            # TIP - ...
+
+        feedback = []
 
         if pose_landmarks is None:
             feedback = [('USER_INFO', 'Not Detected')]
@@ -122,25 +142,25 @@ class SquatFormAnalyser():
                     self.form_analyser.min_confidence_threshold,
                     list(most_visible_joints_dict.values())
                 ):
+                    self.no_confident_detection_count = 0
+
+                    # TODO: review how well __check_set_has_ended works
+                    if self.__check_set_has_ended(most_visible_joints_dict['ankle']):
+                        # TODO: return summary here?
+                        feedback = [('USER_INFO', 'Set has ended')]
+
+                        self.__initialise_state()
+                        self.form_analyser.initialise_state()
+                    else:
+                        feedback = self.get_feedback_based_on_joints_dict(
+                            joints_dict,
+                            most_visible_joints_dict
+                        )
+                else:
                     self.no_confident_detection_count += 1
                     if self.no_confident_detection_count >= self.no_detection_count_threshold:
                         # TODO: return summary here?
                         feedback = [('USER_INFO', 'Set ended (user not detected)')]
-                else:
-                    self.no_confident_detection_count = 0
-
-                # TODO: review how well __check_set_has_ended works
-                if self.__check_set_has_ended(most_visible_joints_dict['ankle']):
-                    # TODO: return summary here?
-                    feedback = [('USER_INFO', 'Set has ended')]
-
-                    self.__initialise_state()
-                    self.form_analyser.initialise_state()
-                else:
-                    feedback = self.get_feedback_based_on_joints_dict(
-                        joints_dict,
-                        most_visible_joints_dict
-                    )
             else:
                 left_joints = [joints_dict['left_' + j] for j in self.form_analyser.main_joints]
                 right_joints = [joints_dict['right_' + j] for j in self.form_analyser.main_joints]
@@ -152,8 +172,10 @@ class SquatFormAnalyser():
                     self.form_analyser.min_confidence_threshold,
                     right_joints
                 ):
-                    time_remaining = self.stationary_duration
-                    if self.stationary_start_time is not None:
+                    if self.stationary_start_time is None:
+                        time_remaining = self.stationary_duration
+                    else:
+                        # TODO: change this to work with frame count, not time as causes flakiness and inaccuracy
                         time_remaining = round(self.stationary_duration - time.time() + self.stationary_start_time, 2)
 
                     feedback = [('USER_INFO', f'Stay still for {time_remaining} seconds to start set')]
@@ -194,11 +216,8 @@ class SquatFormAnalyser():
         return feedback, success
 
     def get_feedback_based_on_joints_dict(self, joints_dict, most_visible_joints_dict):
-        """
-        Analyses joint positions relative to current state sequence and form criteria to determine immediate feedback for user.
-
-        Assumes that the confidence of the joints joints_dict is high enough.
-        """
+        """ Analyses joint positions relative to current state sequence and form criteria to determine immediate feedback for user.
+        Assumes that the confidence of the joints joints_dict is high enough. """
         ###### Determine orientation and angles ######
         orientation = self.form_analyser.get_orientation(
             joints_dict['left_shoulder'],
@@ -207,17 +226,20 @@ class SquatFormAnalyser():
             joints_dict['right_hip'],
             self.general_thresholds['face_on']
         )
-        angles = self.form_analyser.get_main_joint_vertical_angles(most_visible_joints_dict)
-        ankle_vertical_angle, knee_vertical_angle, hip_vertical_angle = angles
+        knee_angle, hip_angle = self.form_analyser.get_main_joint_angles(most_visible_joints_dict)
 
 
         ##### Determine state_sequence based on angles #####
         final_feedback = []
-        if self.state_sequence != [STANDING] and knee_vertical_angle <= self.form_thresholds['STANDING_knee_angle']:
+        # TODO: change this first check to check actual desired sequence is seen
+            # ['STANDING', 'TRANSITION'] is acceptable (if depth is bad) but only when timing is right?
+            # or, discard non valid reps and rely on checks below to relay feedback (only count good reps)
+        if self.state_sequence != [STANDING] and self.form_thresholds['STANDING_knee_angle_range'][0] <= knee_angle <= self.form_thresholds['STANDING_knee_angle_range'][1]:
             if self.state_sequence[-1] == TRANSITION:
                 self.squat_end_time = time.time()
             elif self.state_sequence[-1] == BOTTOM:
-                print(f'{YELLOW_BG} ANALYSIS INFO: Transition not detected. Was standing now bottom. {NORMAL}')
+                pass
+                # print(f'{YELLOW_BG} ANALYSIS INFO: Transition not detected. Was standing now bottom. {NORMAL}')
 
             # TODO: change this to be standing_to_bottom_time, bottom_time, bottom_to_standing_time?
             # TODO: review time/duration stuff in general
@@ -228,36 +250,29 @@ class SquatFormAnalyser():
 
             final_feedback.append(('STATE_SEQUENCE', ((s_to_m, m_to_e), self.state_sequence)))
             self.state_sequence = [STANDING]
-        elif self.state_sequence[-1] != TRANSITION and self.form_thresholds['TRANSITION_knee_angle_range'][0] <= knee_vertical_angle <= self.form_thresholds['TRANSITION_knee_angle_range'][1]:
+        elif self.state_sequence[-1] != TRANSITION and self.form_thresholds['TRANSITION_knee_angle_range'][0] <= knee_angle <= self.form_thresholds['TRANSITION_knee_angle_range'][1]:
             if self.state_sequence[-1] == STANDING:
                 self.squat_start_time = time.time()
             elif self.state_sequence[-1] == BOTTOM:
                 self.squat_mid_time = time.time()
             if self.state_sequence[-1] != TRANSITION:
                 self.state_sequence.append(TRANSITION)
-        elif self.state_sequence[-1] != BOTTOM and self.form_thresholds['BOTTOM_knee_angle_range'][0] <= knee_vertical_angle <= self.form_thresholds['BOTTOM_knee_angle_range'][1]:
+        elif self.state_sequence[-1] != BOTTOM and self.form_thresholds['BOTTOM_knee_angle_range'][0] <= knee_angle <= self.form_thresholds['BOTTOM_knee_angle_range'][1]:
             if self.state_sequence[-1] == STANDING:
-                print(f'{YELLOW_BG} ANALYSIS INFO: Transition not detected. Was bottom now standing. {NORMAL}')
+                pass
+                # print(f'{YELLOW_BG} ANALYSIS INFO: Transition not detected. Was bottom now standing. {NORMAL}')
             if self.state_sequence[-1] != BOTTOM:
                 self.state_sequence.append(BOTTOM)
 
 
         ###### Determine Feedback ######
-        hip_vertical_angle = round(hip_vertical_angle)
-        if hip_vertical_angle > self.form_thresholds['safe_hip_angle']:
-            final_feedback.append(('FEEDBACK', 'Bend Backwards'))
-
-        knee_vertical_angle = round(knee_vertical_angle)
-        # TODO: move this above to where state_sequence stuff is done?
-        if self.form_thresholds['TRANSITION_knee_angle_range'][0] < knee_vertical_angle < self.form_thresholds['TRANSITION_knee_angle_range'][1] and \
+        if self.form_thresholds['TRANSITION_knee_angle_range'][0] < knee_angle < self.form_thresholds['TRANSITION_knee_angle_range'][1] and \
             self.state_sequence.count(TRANSITION) == 1:
             # TODO: redo this to identify if eccentric was complete without good depth, rather than cueing to keep going deeper
-
-            # TODO: handle TIP tag
             final_feedback.append(('TIP', 'Lower Hips'))
-        elif knee_vertical_angle > self.form_thresholds['safe_knee_angle']:
-            # 'Deep Squat' # TODO: what is this comment?
-            final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {round(knee_vertical_angle)} and should be less than {self.form_thresholds["safe_knee_angle"]}'))
+        # elif self.form_thresholds['safe_knee_angle'] < knee_angle:
+        #     # 'Deep Squat' # TODO: what is this comment?
+        #     final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {knee_angle} and should be less than {self.form_thresholds["safe_knee_angle"]}'))
 
         if self.state_sequence[-1] == BOTTOM:
             if not self.form_analyser.check_joints_are_level(
@@ -266,6 +281,11 @@ class SquatFormAnalyser():
                 self.general_thresholds['knee_level']
             ):
                 final_feedback.append(('FEEDBACK', 'Knees are not level'))
+
+        # TODO: check this and move 35 (constant) into form_thresholds
+        if self.state_sequence[-1] == TRANSITION and knee_angle < 35 and self.form_thresholds['safe_hip_angle'] < hip_angle:
+            # TODO: TRANSITION happens early-ish, so this check is done while close to upright. causes misread. check that knee angle is certain amount?
+            final_feedback.append(('FEEDBACK', f'Bend Backwards (knee: {knee_angle}, hip: {hip_angle})'))
 
         # TODO: make this more robust if set stage measurement fails
         if self.squat_end_time < self.squat_start_time:
@@ -318,7 +338,8 @@ class SquatFormAnalyser():
                 final_feedback.append(('FEEDBACK', 'Shoulders are not vertically aligned with feet'))
         elif orientation == 'side_on':
             # TODO: this
-            exit(f'{RED_BG} side_on form feedback not implemented {NORMAL}')
+            pass
+            # exit(f'{RED_BG} side_on form feedback not implemented {NORMAL}')
 
         return final_feedback
 
@@ -339,11 +360,11 @@ class SquatFormAnalyser():
             for joint_name in self.form_analyser.main_joints
         }
 
-        _, knee_vertical_angle, hip_vertical_angle = self.form_analyser.get_main_joint_vertical_angles(most_visible_main_joints)
+        knee_angle, hip_angle = self.form_analyser.get_main_joint_angles(most_visible_main_joints)
 
         if self.form_analyser.joints_in_starting_position(
-            knee_vertical_angle,
-            hip_vertical_angle,
+            knee_angle,
+            hip_angle,
             self.general_thresholds['starting_knee_angle_range'],
             self.general_thresholds['starting_hip_angle_range']
         ):
@@ -352,6 +373,7 @@ class SquatFormAnalyser():
 
             if self.__joint_buffer_is_stationary():
                 if self.stationary_start_time is None:
+                    # TODO: change this to work with frame count and not time
                     self.stationary_start_time = time.time()
                 elif time.time() - self.stationary_start_time > self.stationary_duration:
                     return True

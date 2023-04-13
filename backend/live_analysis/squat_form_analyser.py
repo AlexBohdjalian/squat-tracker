@@ -48,33 +48,36 @@ class MediaPipe_To_Form_Interpreter():
         self.most_visible_side = []
         self.orientation = []
 
-
     def initialise_state(self):
         self.most_visible_side = []
         self.orientation = []
 
+    def __calc_3D_angle(self, joint1, joint2, joint3):
+        # Create vectors from joint2 to joint1 and joint2 to joint3
+        vector1 = np.array([joint1.x - joint2.x, joint1.y - joint2.y, joint1.z - joint2.z])
+        vector2 = np.array([joint3.x - joint2.x, joint3.y - joint2.y, joint3.z - joint2.z])
 
-    def __calc_angle(self, joint1, joint2, joint3):
-        radians = np.arctan2(joint3.y-joint2.y, joint3.x-joint2.x) \
-                - np.arctan2(joint1.y-joint2.y, joint1.x-joint2.x)
+        # Calculate the dot product and magnitudes of the vectors
+        dot_product = np.dot(vector1, vector2)
+        magnitude1_squared = np.dot(vector1, vector1)
+        magnitude2_squared = np.dot(vector2, vector2)
 
-        angle = abs(np.rad2deg(radians))
-        if angle > 180.0:
-            angle = 360-angle
+        # Calculate the angle between the vectors in radians
+        radians = np.arccos(dot_product / np.sqrt(magnitude1_squared * magnitude2_squared))
+
+        # Convert radians to degrees
+        angle = np.rad2deg(radians)
 
         return angle
 
-
     def check_confidence(self, confidence_threshold, joints):
-        return all(joints) and all([joint.visibility > confidence_threshold for joint in joints])
-
+        return all(joints) and all([joint.visibility >= confidence_threshold for joint in joints])
 
     def get_joints_dict(self, pose_landmarks):
         return {
             joint_name: pose_landmarks.landmark[self.landmark_names[joint_name]]
             for joint_name in self.landmark_names.keys()
         }
-
 
     def get_most_visible_side(self, left_joints, right_joints, set_begun):
         if set_begun:
@@ -96,7 +99,6 @@ class MediaPipe_To_Form_Interpreter():
 
         return self.most_visible_side
 
-
     def get_orientation(self, left_shoulder, right_shoulder, left_hip, right_hip, threshold):
         """
         Determines the orientation of the user based on shoulder and hip depth.
@@ -104,8 +106,6 @@ class MediaPipe_To_Form_Interpreter():
         After 50 measurements an average is taken of the observations to improve performance.
         """
         if isinstance(self.orientation, type([])):
-            # TODO: check confidence
-
             shoulder_depth_difference = abs(left_shoulder.z - right_shoulder.z)
             hip_depth_difference = abs(left_hip.z - right_hip.z)
 
@@ -122,18 +122,11 @@ class MediaPipe_To_Form_Interpreter():
 
         return self.orientation
 
-
-    def get_main_joint_vertical_angles(self, joints):
-        ankle_vertical = self.VerticalBase(joints['ankle'].x, 0, joints['ankle'].z, joints['ankle'].visibility)
-        knee_vertical = self.VerticalBase(joints['knee'].x, 0, joints['knee'].z, joints['knee'].visibility)
-        hip_vertical = self.VerticalBase(joints['hip'].x, 0, joints['hip'].z, joints['hip'].visibility)
-
+    def get_main_joint_angles(self, joints):
         return [
-            self.__calc_angle(ankle_vertical, joints['ankle'], joints['knee']),
-            self.__calc_angle(knee_vertical, joints['knee'], joints['hip']),
-            self.__calc_angle(hip_vertical, joints['hip'], joints['shoulder'])
+            round(self.__calc_3D_angle(joints['ankle'], joints['knee'], joints['hip']), 1),
+            round(self.__calc_3D_angle(joints['knee'], joints['hip'], joints['shoulder']), 1)
         ]
-
 
     def joints_in_starting_position(
         self,
@@ -145,10 +138,8 @@ class MediaPipe_To_Form_Interpreter():
         return knee_angle_range[0] <= knee_vertical_angle <= knee_angle_range[1] and \
             hip_angle_range[0] <= hip_vertical_angle <= hip_angle_range[1]
 
-
     def check_joints_are_level(self, joint1, joint2, threshold):
         return abs(joint1.y - joint2.y) <= threshold
-
 
     def check_joints_are_vertically_aligned(self, left_joint1, right_joint1, left_joint2, right_joint2, threshold):
         joint1_mid = abs(right_joint1.x + abs(right_joint1.x - left_joint1.x) / 2)
