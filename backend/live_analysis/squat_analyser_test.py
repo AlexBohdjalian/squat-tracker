@@ -18,9 +18,8 @@ videos = [
     { 'path': '../assets/goblet_squat.mp4', 'any_problems': False, 'reps': 0 },
     { 'path': '../assets/barbell_back_squat.mp4', 'any_problems': False, 'reps': 0 },
     { 'path': '../assets/barbell_front_squat.mp4', 'any_problems': False, 'reps': 0 },
-    # TODO: need some bad form videos
-        # landmarks disappear for significant amount of time
-        # ...
+    { 'path': '../assets/me_bad_form_squat.mp4', 'any_problems': True, 'reps': 2 },
+    # TODO: need to test set ends
 ]
 
 
@@ -43,7 +42,7 @@ for vid in videos:
 
     process_start_time = time.time()
     while True:
-        feedback, success = form_analyser.analyse(cap, show_output=False)
+        feedback, success = form_analyser.analyse(cap, show_output=True)
         if not success:
             break
 

@@ -43,10 +43,10 @@ class SquatFormAnalyser():
         self.general_thresholds = {
             'set_start_stationary': 0.07,  # TODO: tune this
             'set_end_stationary': 0.15,  # TODO: tune this
-            'face_on': 0.1,
+            'face_on': 0.12,
 
-            'starting_knee_angle_range': (65, 180),  # TODO: Tune this
-            'starting_hip_angle_range': (75, 180),  # TODO: Tune this
+            'starting_knee_angle_range': (65, 180),  # TODO: test
+            'starting_hip_angle_range': (75, 180),  # TODO: test
 
             'shoulder_level': 0.05,
             'ankle_level': 0.05,  # TODO: test
@@ -66,16 +66,16 @@ class SquatFormAnalyser():
             'shoulder_vertically_aligned': 0,  # TODO: do this
         }
         self.form_thresholds_advanced = {
-            'STANDING_knee_angle_range': (62, 180),  # TODO: tune this
-            'TRANSITION_knee_angle_range': (28, 55),  # TODO: tune this
-            'BOTTOM_knee_angle_range': (0, 26),  # TODO: tune this
+            'STANDING_knee_angle_range': (62, 180),  # TODO: test
+            'TRANSITION_knee_angle_range': (28, 55),  # TODO: test
+            'BOTTOM_knee_angle_range': (0, 26),  # TODO: test
 
-            # 'safe_ankle_angle': 30,  # TODO: Tune this !!!!!!!!!!!!!
-            # 'safe_knee_angle': 115,  # TODO: Tune this !!!!!!!!!!!!!
-            'safe_hip_angle': 62,  # TODO: Tune this !!!!!!!!!!!!!
+            # 'safe_ankle_angle': 30,  # TODO: tune this, needed?
+            # 'safe_knee_angle': 115,  # TODO: tune this, needed?
+            'safe_hip_angle': 62,  # TODO: test
 
-            'hip_vertically_aligned': 0.04,  # TODO: Tune this
-            'shoulder_vertically_aligned': 0.075,  # TODO: Tune this
+            'hip_vertically_aligned': 0.04,  # TODO: test
+            'shoulder_vertically_aligned': 0.075,  # TODO: test
         }
         self.form_thresholds = self.form_thresholds_advanced if use_advanced_criteria else self.form_thresholds_beginner
         self.state_sequence = [STANDING]
@@ -88,7 +88,9 @@ class SquatFormAnalyser():
         self.set_ended_counter = 0
         self.set_ended_threshold = 5
         self.no_confident_detection_count = 0
-        self.no_detection_count_threshold = 10
+        self.no_detection_count_threshold = 30
+        self.no_landmarks_count = 0
+        self.no_landmarks_count_threshold = 30
         self.squat_duration = 0
         self.squat_start_time = 0
         self.squat_mid_time = 0
@@ -102,6 +104,7 @@ class SquatFormAnalyser():
         self.stationary_start_time = None
         self.set_ended_counter = 0
         self.no_confident_detection_count = 0
+        self.no_landmarks_count = 0
         self.squat_duration = 0
         self.squat_start_time = 0
         self.squat_mid_time = 0
@@ -126,9 +129,16 @@ class SquatFormAnalyser():
         if pose_landmarks is None:
             feedback = [('USER_INFO', 'Not Detected')]
 
-            # TODO: if not detected, for a while, handle
-
+            self.no_landmarks_count += 1
+            if self.no_landmarks_count >= self.no_landmarks_count_threshold:
+                # TODO: return summary here?
+                feedback = [('USER_INFO', 'Set ended (user not detected)')]
+                
+                self.__initialise_state()
+                self.form_analyser.initialise_state()
         else:
+            self.no_landmarks_count = 0
+
             # Get dictionary of joints for ease of use
             joints_dict = self.form_analyser.get_joints_dict(pose_landmarks)
 
@@ -152,6 +162,8 @@ class SquatFormAnalyser():
                         self.__initialise_state()
                         self.form_analyser.initialise_state()
                     else:
+                        # TODO: consider what to do if feedback is invalid?
+                            # reason will most likely be pose estimation joint mis-measurement
                         feedback = self.get_feedback_based_on_joints_dict(
                             joints_dict,
                             most_visible_joints_dict
@@ -161,6 +173,9 @@ class SquatFormAnalyser():
                     if self.no_confident_detection_count >= self.no_detection_count_threshold:
                         # TODO: return summary here?
                         feedback = [('USER_INFO', 'Set ended (user not detected)')]
+
+                        self.__initialise_state()
+                        self.form_analyser.initialise_state()
             else:
                 left_joints = [joints_dict['left_' + j] for j in self.form_analyser.main_joints]
                 right_joints = [joints_dict['right_' + j] for j in self.form_analyser.main_joints]
@@ -296,12 +311,12 @@ class SquatFormAnalyser():
         if orientation == 'face_on':
             # TODO: move this out of orientation check?
             # TODO: is this necessary?
-            if not self.form_analyser.check_joints_are_level(
-                joints_dict['left_ankle'],
-                joints_dict['right_ankle'],
-                self.general_thresholds['ankle_level']
-            ):
-                final_feedback.append(('FEEDBACK', 'Ankles are not level'))
+            # if not self.form_analyser.check_joints_are_level(
+            #     joints_dict['left_ankle'],
+            #     joints_dict['right_ankle'],
+            #     self.general_thresholds['ankle_level']
+            # ):
+            #     final_feedback.append(('FEEDBACK', 'Ankles are not level'))
 
             # TODO: move this out of orientation check?
             if not self.form_analyser.check_joints_are_level(

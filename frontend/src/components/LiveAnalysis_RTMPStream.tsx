@@ -171,7 +171,7 @@ export default function App() {
           {streaming ? (
             <Icon name="stop-circle-outline" size={50} color="#FF0001" />
           ) : (
-            <Text style={style.streamText}>Start streaming</Text>
+            <Text style={style.streamText}>Start Analysing Form</Text>
           )}
         </TouchableOpacity>
       </View>

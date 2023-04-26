@@ -87,7 +87,7 @@ print('Stream started!')
 try:
     while True:
         # Process the frame
-        immediate_f, success = form_analyser.analyse(cap, show_output=False)
+        immediate_f, success = form_analyser.analyse(cap, show_output=True)
         if not success:
             break
 
