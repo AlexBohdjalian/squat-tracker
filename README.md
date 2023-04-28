@@ -22,23 +22,6 @@ git clone https://github.com/yourusername/squat-form-analyser.git
 Change into the repository directory:
 cd squat-form-analyser
 
-(Optional) Create a virtual environment:
-python3 -m venv venv
-source venv/bin/activate
-
-Install the required packages:
-pip install -r requirements.txt
+TODO: FINISH
 
 ## Usage
-You can run the Squat Form Analyser using the following command:
-
-python main.py [--video VIDEO_PATH] [--show_output]
-
-- `--video VIDEO_PATH`: (Optional) Specify a video file to use instead of a live video stream. By default, the live video stream from the default camera will be used.
-- `--show_output`: (Optional) Display the visual output with pose landmarks and feedback text. Note that enabling this option may slow down performance.
-
-## Customization
-You can customize the form criteria for face-on and side-on orientations by modifying the `form_thresholds_beginner` and `form_thresholds_advanced` dictionaries in the `SquatFormAnalyser` class. Update the joint angle ranges and level thresholds as needed to fit your specific requirements.
-
-## License
-TODO
