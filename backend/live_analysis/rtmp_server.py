@@ -87,9 +87,11 @@ print('Stream started!')
 try:
     while True:
         # Process the frame
-        immediate_f, success = form_analyser.analyse(cap, show_output=True)
+        immediate_f, success = form_analyser.analyse(cap, show_output=False)
         if not success:
             break
+
+        # TODO: change this to append feedback to current_f and then /form-feedback method clears it
 
         if immediate_f not in [[], current_f]:
             for tag, f in immediate_f:

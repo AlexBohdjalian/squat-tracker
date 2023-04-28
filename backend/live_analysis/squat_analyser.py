@@ -119,11 +119,6 @@ class SquatFormAnalyser():
         # Get pose landmarks
         pose_landmarks = self.pose_detector.make_prediction(frame)
 
-        # TODO: decide what types there are for feedback
-            # USER_INFO - ...
-            # FEEDBACK - ...
-            # TIP - ...
-
         feedback = []
 
         if pose_landmarks is None:
@@ -276,8 +271,8 @@ class SquatFormAnalyser():
             if self.state_sequence[-1] == STANDING:
                 pass
                 # print(f'{YELLOW_BG} ANALYSIS INFO: Transition not detected. Was bottom now standing. {NORMAL}')
-            if self.state_sequence[-1] != BOTTOM:
-                self.state_sequence.append(BOTTOM)
+
+            self.state_sequence.append(BOTTOM)
 
 
         ###### Determine Feedback ######
@@ -289,8 +284,8 @@ class SquatFormAnalyser():
         #     # 'Deep Squat' # TODO: what is this comment?
         #     final_feedback.append(('FEEDBACK', f'Incorrect Posture. Knee angle is: {knee_angle} and should be less than {self.form_thresholds["safe_knee_angle"]}'))
 
-        if self.state_sequence[-1] == BOTTOM:
-            if not self.form_analyser.check_joints_are_level(
+        if self.state_sequence[-1] == BOTTOM and \
+            not self.form_analyser.check_joints_are_level(
                 joints_dict['left_knee'],
                 joints_dict['right_knee'],
                 self.general_thresholds['knee_level']
@@ -309,16 +304,6 @@ class SquatFormAnalyser():
 
         ##### Determine feedback specific to user camera orientation #####
         if orientation == 'face_on':
-            # TODO: move this out of orientation check?
-            # TODO: is this necessary?
-            # if not self.form_analyser.check_joints_are_level(
-            #     joints_dict['left_ankle'],
-            #     joints_dict['right_ankle'],
-            #     self.general_thresholds['ankle_level']
-            # ):
-            #     final_feedback.append(('FEEDBACK', 'Ankles are not level'))
-
-            # TODO: move this out of orientation check?
             if not self.form_analyser.check_joints_are_level(
                 joints_dict['left_shoulder'],
                 joints_dict['right_shoulder'],
@@ -326,7 +311,6 @@ class SquatFormAnalyser():
             ):
                 final_feedback.append(('FEEDBACK', 'Shoulders are not level'))
 
-            # TODO: move this out of orientation check?
             if not self.form_analyser.check_joints_are_level(
                 joints_dict['left_hip'],
                 joints_dict['right_hip'],
@@ -353,8 +337,9 @@ class SquatFormAnalyser():
                 final_feedback.append(('FEEDBACK', 'Shoulders are not vertically aligned with feet'))
         elif orientation == 'side_on':
             # TODO: this
+                # TODO: spine should be neutral,
+                # TODO: knees should go over toes,
             pass
-            # exit(f'{RED_BG} side_on form feedback not implemented {NORMAL}')
 
         return final_feedback
 

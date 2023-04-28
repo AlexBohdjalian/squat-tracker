@@ -1,11 +1,13 @@
 import { StyleSheet } from 'react-native';
 
-export default (streaming: boolean, android: boolean, warning: boolean) =>
+export default (streaming: boolean, android: boolean, warning: boolean, feedbackType: 'NONE' | 'GOOD' | 'TIP' | 'CRITICAL') =>
   StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      borderColor: feedbackType === 'GOOD' ? 'green' : feedbackType === 'TIP' ? 'darkorange' : feedbackType === 'CRITICAL' ? 'red' : 'transparent',
+      borderWidth: feedbackType === 'NONE' ? 0 : 8,
     },
     formFeedbackContainer: {
       position: 'absolute',

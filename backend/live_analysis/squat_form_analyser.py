@@ -94,7 +94,7 @@ class MediaPipe_To_Form_Interpreter():
                 self.most_visible_side.append('left_')
             else:
                 self.most_visible_side.append('right_')
-            
+
             return self.most_visible_side[-1]
 
         return self.most_visible_side

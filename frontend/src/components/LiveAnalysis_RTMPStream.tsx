@@ -26,12 +26,13 @@ export interface ISettingsState {
 }
 
 const ip = '192.168.0.28';
-const FEEDBACK_URL = `http://${ip}:5000`;
+const FEEDBACK_URL = `http://${ip}:5000/form-feedback`;
 
 export default function App() {
   // LOCAL STATE
   // Stream view
   const [streaming, setStreaming] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<'NONE'|'GOOD'|'TIP'|'CRITICAL'>('NONE');
   const [camera, setCamera] = useState<'front' | 'back'>('front');
   const [warning, setWarning] = useState<{
     display: boolean;
@@ -49,8 +50,13 @@ export default function App() {
   };
   const ref = useRef<LiveStreamMethods | null>(null);
   const isAndroid = Platform.OS === 'android';
-  const style = styles(streaming, isAndroid, warning.display);
+  const style = styles(streaming, isAndroid, warning.display, feedbackType);
   const growAnim = useRef(new Animated.Value(0)).current;
+
+  const initialiseStates = () => {
+    setFormFeedback('');
+    setFeedbackType('NONE');
+  }
 
   useEffect(() => {
     const grow = () => {
@@ -63,13 +69,24 @@ export default function App() {
     warning.display && grow();
   }, [warning.display, growAnim, isAndroid]);
 
+  useEffect(() => {
+    if (streaming) {
+      const intervalId = setInterval(() => {
+        fetchFormFeedback();
+      }, 1000 / settings.framerate);
+
+      return () => {
+        clearInterval(intervalId);
+      };
+    }
+  }, [streaming]);
+
   const fetchFormFeedback = async () => {
     try {
-      const response = await axios.get(`${FEEDBACK_URL}/form-feedback`);
-      const data = response.data;
-      // TODO: LOOK at tag on feedback and handle accordingly
-      // TODO: display data in longer and more sensible ways (ensure it doesn't blip)
-      setFormFeedback(data.join(', '));
+      const response = await axios.get(FEEDBACK_URL);
+      if (response.data) {
+        handleFormFeedback(response.data);
+      }
     } catch (error) {
       if (error.message !== "Network Error") {
       console.error('Error fetching form feedback:', error);
@@ -77,18 +94,24 @@ export default function App() {
     }
   };
 
-  // Call the fetchFormFeedback function every 3 seconds when the streaming is on
-  useEffect(() => {
-    if (streaming) {
-      const intervalId = setInterval(() => {
-        fetchFormFeedback();
-      }, 1000 / settings.framerate);
-  
-      return () => {
-        clearInterval(intervalId);
-      };
+  const handleFormFeedback = (data: any) => {
+    setFormFeedback(data.join(', '));
+
+    // TODO: for each feedback in data, figure out what to do, add to queue?
+      // Either take highest priority point or,
+      // add to queue and display in priority order
+
+    const tags = data.map(feedback => feedback[0]);
+    if (tags.includes('FEEDBACK') || (tags.includes('USER_INFO') && data.map(feedback => feedback[0]).includes('Not Detected'))) {
+      setFeedbackType('CRITICAL');
+    } else if (tags.includes('TIP')) {
+      setFeedbackType('TIP');
+    } else if (tags.includes('STATE_SEQUENCE')) {
+      setFeedbackType('GOOD');
+    } else {
+      setFeedbackType('NONE');
     }
-  }, [streaming]);
+  }
 
   const handleStreaming = (): void => {
     // Reset warning
@@ -152,17 +175,17 @@ export default function App() {
         enablePinchedZoom={true}
         onConnectionSuccess={() => {
           console.log('Received onConnectionSuccess');
-          setFormFeedback('');
+          initialiseStates();
         }}
         onConnectionFailed={(reason: string) => {
           console.log('Received onConnectionFailed: ' + reason);
           setStreaming(false);
-          setFormFeedback('');
+          initialiseStates();
         }}
         onDisconnect={() => {
           console.log('Received onDisconnect');
           setStreaming(false);
-          setFormFeedback('');
+          initialiseStates();
         }}
       />
 
