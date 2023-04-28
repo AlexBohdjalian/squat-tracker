@@ -17,8 +17,9 @@ export type RootStackParamList = {
   Root: NavigatorScreenParams<RootTabParamList> | undefined;
   AppInfo: undefined;
   NotFound: undefined;
-  VideoFeed: undefined;
+  LiveFormAnalyser: undefined;
   FormReview: { videoUri: string, formData: any };
+  PostSetSummary: FinalSummary;
 };
 
 export type RootStackScreenProps<Screen extends keyof RootStackParamList> = NativeStackScreenProps<
@@ -26,12 +27,22 @@ export type RootStackScreenProps<Screen extends keyof RootStackParamList> = Nati
   Screen
 >;
 
+export type FinalSummary = {
+  goodReps: number,
+  badReps: number,
+  mistakesMade: {
+    rep: number,
+    mistakes: string[],
+  }[],
+  finalComments: string,
+}
+
 export type RootTabParamList = {
   Menu: undefined;
   Settings: undefined;
   AppInfo: undefined;
-  VideoFeed: undefined;
   FormReview: { videoUri: string, formData: any };
+  PostSetSummary: FinalSummary;
 };
 
 export type RootTabScreenProps<Screen extends keyof RootTabParamList> = CompositeScreenProps<

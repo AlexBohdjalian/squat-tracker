@@ -97,11 +97,13 @@ try:
 
         # NOTE: comment this bit out in real testing for performance reasons
         if immediate_f not in [[], current_f]:
-            for tag, f in immediate_f:
-                if tag in ['FEEDBACK', 'STATE_SEQUENCE']:
-                    print(f'{tag}: {f}')
+            for f in immediate_f:
+                if f['tag'] in ['FEEDBACK', 'STATE_SEQUENCE']:
+                    print(f'{f["tag"]}: {f["message"]}')
+                elif f['tag'] == 'SET_ENDED':
+                    print(f'{YELLOW_BG} Final Summary: {f["summary"]}')
                 else:
-                    print(f'{YELLOW_BG} {tag}: {f} {NORMAL}')
+                    print(f'{YELLOW_BG} {f["tag"]}: {f["message"]} {NORMAL}')
 
         current_f = immediate_f
 

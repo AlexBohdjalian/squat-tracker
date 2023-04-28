@@ -22,18 +22,15 @@ const linking: LinkingOptions<RootStackParamList> = {
           },
           Settings: {
             screens: {
-              SettginsScreen: 'settings',
+              SettingsScreen: 'settings',
             },
-          },
-          VideoFeed: {
-            screens: {
-              VideoFeedScreen: 'videoFeed',
-            }
           },
         },
       },
       AppInfo: 'appInfo',
       FormReview: 'formReview',
+      LiveFormAnalyser: 'liveFormAnalyser',
+      PostSetSummary: 'postSetSummary',
       NotFound: '*',
     },
   },

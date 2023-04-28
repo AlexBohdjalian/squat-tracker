@@ -114,7 +114,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
         <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
         <View style={styles.buttonsContainer}>
           <Button
-            onPress={() => navigation.navigate('VideoFeed')}
+            onPress={() => navigation.navigate('LiveFormAnalyser')}
             title="Go To Live Squat Tracker"
           />
           <Button

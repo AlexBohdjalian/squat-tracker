@@ -12,7 +12,6 @@ class MediaPipeDetector:
         self.pose = mp.solutions.pose.Pose(
             static_image_mode=False,
             model_complexity=model_complexity,
-            enable_segmentation=False,
             smooth_landmarks=smooth_landmarks,
             min_detection_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence

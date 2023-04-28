@@ -14,7 +14,9 @@ import {
   Resolution,
 } from '@api.video/react-native-livestream';
 import Icon from 'react-native-vector-icons/Ionicons';
-import styles, { button } from '../styles/LiveAnalysis_RTMPStreamStyle';
+import styles, { button } from '../styles/LiveFormAnalyserStyle';
+import { FinalSummary, RootStackScreenProps } from '../../types';
+import Button from '../components/Button';
 
 
 export interface ISettingsState {
@@ -25,11 +27,19 @@ export interface ISettingsState {
   streamKey: string;
 }
 
+type FormFeedback = {
+  tag: string;
+  message?: string;
+  summary?: FinalSummary;
+};
+
 const ip = '192.168.0.28';
 const FEEDBACK_URL = `http://${ip}:5000/form-feedback`;
+const abortController = new AbortController();
 
-export default function App() {
+export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'LiveFormAnalyser'>) {
   const [streaming, setStreaming] = useState(false);
+  const [setStarted, setSetStarted] = useState<boolean>(false);
   const [feedbackType, setFeedbackType] = useState<'NONE'|'GOOD'|'TIP'|'CRITICAL'>('NONE');
   const [feedbackTimer, setFeedbackTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [countdownTimer, setCountdownTimer] = useState<string>('');
@@ -58,6 +68,8 @@ export default function App() {
     setDisplayedFeedback({tag: '', message: '', priority: -1});
     setFeedbackType('NONE');
     setRepCounter(0);
+    setCountdownTimer('');
+    setSetStarted(false);
   }
 
   useEffect(() => {
@@ -72,81 +84,94 @@ export default function App() {
   }, [warning.display, growAnim, isAndroid]);
 
   useEffect(() => {
-    if (streaming) {
-      const intervalId = setInterval(() => {
-        fetchFormFeedback();
-      }, 1000 / settings.framerate);
-
+    if (streaming) {  
+      const fetchFormFeedback = async () => {
+        try {
+          const response = await axios.get(FEEDBACK_URL, {
+            signal: abortController.signal,
+          });
+          if (response.data) {
+            handleFormFeedback(response.data);
+          }
+        } catch (error) {
+          if (error.name !== 'AbortError') {
+            console.error('Error fetching form feedback:', error);
+          }
+        }
+      };
+  
+      const intervalId = setInterval(fetchFormFeedback, 1000 / settings.framerate);
+  
       return () => {
         clearInterval(intervalId);
+        abortController.abort();
       };
     }
   }, [streaming]);
 
-  const fetchFormFeedback = async () => {
-    try {
-      const response = await axios.get(FEEDBACK_URL);
-      if (response.data) {
-        handleFormFeedback(response.data);
-      }
-    } catch (error) {
-      if (error.message !== "Network Error") {
-      console.error('Error fetching form feedback:', error);
-      }
-    }
-  };
-
-  const handleFormFeedback = (data: any) => {
+  const handleFormFeedback = (data: FormFeedback[]) => {
     // Process the feedback data
-    data.forEach((feedback: any) => {
-      const tag = feedback[0];
-      const message = feedback[1];
+    data.forEach((feedback: FormFeedback) => {
+      const tag = feedback.tag;
+      // TODO: NEED TO CHANGE BACK END TO RETURN A DICT OF {tag: 'SET_START_COUNTDOWN'|'STATE_SEQUENCE'|'NOT_DETECTED'|'FEEDBACK'|'TIP', message: string} | {tag: bloo, summary: FinalFeedback}
 
       let priority = -1;
-      if (tag === 'SET_START_COUNTDOWN') {
-        if (parseFloat(message) < 0.0) {
-          setCountdownTimer('0');
-        } else {
-          setCountdownTimer(message);
-        }
-
-        return;
-      } else if (tag === 'STATE_SEQUENCE') {
-        setRepCounter(prevRepCounter => prevRepCounter + 1);
-
-        return;
-      } else if (tag === 'SET_ENDED') {
+      if (tag === 'SET_ENDED' && feedback.summary) {
+        handleStreaming();
         initialiseStates();
-        priority = 0
-      } else if (tag === 'NOT_DETECTED') {
-        priority = 1
-      } else if (tag === 'FEEDBACK') {
-        priority = 2
-      } else if (tag === 'TIP') {
-        priority = 3
-      }
 
-      if (priority !== -1 && (displayedFeedback.priority === -1 || priority < displayedFeedback.priority)) {
-        if (priority === 1 || priority === 2) {
-          setFeedbackType('CRITICAL')
-        } else if (priority === 3) {
-          setFeedbackType('TIP')
-        } else {
-          setFeedbackType('NONE');
+        navigation.navigate(
+          'PostSetSummary',
+          feedback.summary
+          // {goodReps: 4, badReps: 3, mistakesMade: [{rep: 1, mistakes: ['Poor Depth']}, {rep: 3, mistakes: ['Shoulders Not Level', 'Hips Shifted To The Left']}, {rep: 7, mistakes: ['Hips Not Vertically Aligned With Feet']}], finalComments: "Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! "}
+        )
+        priority = 0
+      } else {
+        const message = feedback.message;
+        if (tag === 'SET_START_COUNTDOWN') {
+          // TODO: if timer resets, warn the user to stay still
+          if (parseFloat(message) < 0.0) {
+            setCountdownTimer('0');
+            setSetStarted(true);
+          } else {
+            setCountdownTimer(message);
+          }
+
+          return;
+        } else if (tag === 'STATE_SEQUENCE') {
+          setRepCounter(prevRepCounter => prevRepCounter + 1);
+
+          return;
+        } else if (tag === 'NOT_DETECTED') {
+          priority = 1
+        } else if (tag === 'FEEDBACK') {
+          priority = 2
+        } else if (tag === 'TIP') {
+          priority = 3
         }
-        
-        if (feedbackTimer) {
-          clearTimeout(feedbackTimer);
+
+        if (priority !== -1 && (displayedFeedback.priority === -1 || priority < displayedFeedback.priority)) {
+          if (priority === 1 || priority === 2) {
+            setFeedbackType('CRITICAL')
+          } else if (priority === 3) {
+            setFeedbackType('TIP')
+          } else {
+            setFeedbackType('NONE');
+          }
+          
+          if (feedbackTimer) {
+            clearTimeout(feedbackTimer);
+          }
+          setDisplayedFeedback({
+            tag,
+            message,
+            priority
+          });
+          setFeedbackTimer(setTimeout(() => {
+            setDisplayedFeedback(prev => ({...prev, message: '', priority: -1}));
+            setFeedbackType('NONE');
+          }, 3000));
         }
-        setDisplayedFeedback({
-          tag,
-          message,
-          priority
-        });
-        setFeedbackTimer(setTimeout(() => {
-          setDisplayedFeedback(prev => ({...prev, message: '', priority: -1}));
-          setFeedbackType('NONE');
-        }, 3000));
       }
     });
   }
@@ -253,9 +278,9 @@ export default function App() {
         </Animated.View>
       )}
 
-      {countdownTimer !== '' && (
+      {streaming && !setStarted && (
         <View style={style.countdownTimerContainer}>
-          <Text style={style.countdownTimerText}>{displayedFeedback.message}</Text>
+          <Text style={style.countdownTimerText}>{countdownTimer}</Text>
         </View>
       )}
 

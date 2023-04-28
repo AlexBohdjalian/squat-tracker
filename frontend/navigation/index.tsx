@@ -18,8 +18,9 @@ import MenuScreen from '../src/screens/MenuScreen';
 import SettingsScreen from '../src/screens/SettingsScreen';
 import { RootStackParamList, RootTabParamList, RootTabScreenProps } from '../types';
 import LinkingConfiguration from './LinkingConfiguration';
-import VideoFeedScreen from '../src/screens/VideoFeedScreen';
 import FormReviewScreen from '../src/screens/FormReviewScreen';
+import PostSetSummaryScreen from '../src/screens/PostSetSummaryScreen';
+import LiveFormAnalyser from '../src/screens/LiveFormAnalyserScreen';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
@@ -42,11 +43,14 @@ function RootNavigator() {
     <Stack.Navigator>
       <Stack.Screen name="Root" component={BottomTabNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="NotFound" component={NotFoundScreen} options={{ title: 'Oops!' }} />
-      <Stack.Group screenOptions={{ presentation: 'modal', title: "Video Feed" }}>
-        <Stack.Screen name="VideoFeed" component={VideoFeedScreen} />
+      <Stack.Group screenOptions={{ presentation: 'modal', title: "Live Form Tracking" }}>
+        <Stack.Screen name="LiveFormAnalyser" component={LiveFormAnalyser} />
       </Stack.Group>
       <Stack.Group screenOptions={{ presentation: 'modal', title: "Form Review" }}>
         <Stack.Screen name="FormReview" component={FormReviewScreen} />
+      </Stack.Group>
+      <Stack.Group screenOptions={{ presentation: 'modal', title: "Post Set Summary" }}>
+        <Stack.Screen name="PostSetSummary" component={PostSetSummaryScreen} />
       </Stack.Group>
       <Stack.Group screenOptions={{ presentation: 'modal', title: "" }}>
         <Stack.Screen name="AppInfo" component={AppInfoScreen} />

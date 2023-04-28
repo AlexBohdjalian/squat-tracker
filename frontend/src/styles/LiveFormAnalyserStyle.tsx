@@ -59,7 +59,7 @@ export default (streaming: boolean, android: boolean, warning: boolean, feedback
       borderWidth: 3,
     },
     countdownTimerText: {
-      fontSize: 34,
+      fontSize: 60,
       fontWeight: 'bold',
       textAlign: 'center',
     },

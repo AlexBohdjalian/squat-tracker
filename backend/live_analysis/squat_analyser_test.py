@@ -42,21 +42,25 @@ for vid in videos:
 
     process_start_time = time.time()
     while True:
+        # NOTE: the script works with time to determine some things. without a bit of a natural delay, it messes up. Solution is to replace time with frame count
         feedback, success = form_analyser.analyse(cap, show_output=True)
         if not success:
             break
 
         if feedback != prev_feedback:
             prev_feedback = feedback
-            if len(feedback) > 0 and feedback[0][0] not in ['USER_INFO', 'TIP']:
-                for tag, f in feedback:
+            if len(feedback) > 0 and feedback[0]['tag'] not in ['SET_START_COUNTDOWN', 'NOT_DETECTED', 'TIP']:
+                for f in feedback:
+                    tag = f['tag']
                     if tag == 'STATE_SEQUENCE':
                         # TODO: check that each state sequence is valid?
                             # times are positive
                             # sequence is valid i.e. ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']
-                        state_sequences.append(f)
+                        state_sequences.append(f['message'])
+                    elif tag == 'SET_ENDED':
+                        all_f.append((frame_index, f['summary']))
                     else:
-                        all_f.append((frame_index, f))
+                        all_f.append((frame_index, f['message']))
 
         frame_index += 1
 
