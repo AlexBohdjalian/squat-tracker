@@ -1,21 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { StyleSheet, ScrollView, LogBox } from 'react-native';
 import { Video } from 'expo-av';
 import { Table, Row, Rows } from 'react-native-table-component';
 import { Text, View } from '../components/Themed';
-import { RootStackParamList, RootStackScreenProps } from '../../types';
+import { RootStackParamList } from '../../types';
 import Button from '../components/Button';
 import { RouteProp } from '@react-navigation/native';
 
 // NOTE: there is a bug in react-native-table-component that can be ignored
 LogBox.ignoreLogs(['Warning: Failed prop type: Invalid prop `textStyle` of type `array` supplied to `Cell`, expected `object`.'])
 
-interface IProps {
-  navigation: RootStackScreenProps<'PostSetSummary'>;
-  route: RouteProp<RootStackParamList, 'PostSetSummary'>;
-}
-
-export default function PostSetSummaryScreen({ navigation, route }: IProps) {
+export default function PostSetSummaryScreen(route: RouteProp<RootStackParamList, 'PostSetSummary'>) {
   const [displayVideo, setDisplayVideo] = useState<boolean>(false);
   const { summary, videoUri }: RootStackParamList["PostSetSummary"] = route.params;
   const tableHeaders = ['Rep', 'Mistake'];
@@ -26,69 +21,62 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
     })];
   });
 
-  if (displayVideo) {
-    return (
-      <View style={styles.container}>
+  // TODO: change this to get the same stuff as FormReviewScreen
+
+  return (
+    <View style={styles.container}>
+      {displayVideo ? (
         <Video
           source={{ uri: videoUri }}
-          style={{ width: '100%', height: '91%' }}
+          style={{ width: '100%', height: '91%' }} // TODO: align with middle/re-size to fit
           rate={1.0}
           isMuted={true}
           shouldPlay
           useNativeControls
-          isLooping
         />
-        <Button
-          title="Go Back"
-          onPress={() => setDisplayVideo(false)}
-        />
-      </View>
-    );
-  }
+      ) : (
+        <ScrollView style={styles.scrollView}>
+          <Text style={[styles.textBold, { marginBottom: 0 }]}>Reps Complete</Text>
+          <View style={styles.repsContainer}>
+            <View>
+              <Text style={styles.textBold}>Good Reps</Text>
+              <Text style={styles.text}>{summary.goodReps}</Text>
+            </View>
 
-  return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <Text style={[styles.textBold, { marginBottom: 0 }]}>Reps Complete</Text>
-        <View style={styles.repsContainer}>
-          <View>
-            <Text style={styles.textBold}>Good Reps</Text>
-            <Text style={styles.text}>{summary.goodReps}</Text>
+            <View>
+              <Text style={styles.textBold}>Bad Reps</Text>
+              <Text style={styles.text}>{summary.badReps}</Text>
+            </View>
           </View>
+          <View style={styles.separator} />
 
-          <View>
-            <Text style={styles.textBold}>Bad Reps</Text>
-            <Text style={styles.text}>{summary.badReps}</Text>
+          <Text style={styles.textBold}>Mistakes Made</Text>
+          <Table borderStyle={{borderWidth: 1}}>
+            <Row
+              data={tableHeaders}
+              style={styles.headerRow}
+              flexArr={[1, 3]}
+              textStyle={styles.headerText}
+            />
+            <Rows
+              data={tableData}
+              flexArr={[1, 3]}
+              style={styles.row}
+              textStyle={styles.rowText}
+            />
+          </Table>
+          <View style={[styles.separator, { marginTop: 40 }]} />
+
+          <View style={styles.finalCommentsContainer}>
+            <Text style={styles.textBold}>Final Comments</Text>
+            <Text style={styles.text}>"{summary.finalComments}"</Text>
           </View>
-        </View>
-        <View style={styles.separator} />
-
-        <Text style={styles.textBold}>Mistakes Made</Text>
-        <Table borderStyle={{borderWidth: 1}}>
-          <Row
-            data={tableHeaders}
-            style={styles.headerRow}
-            flexArr={[1, 3]}
-            textStyle={styles.headerText}
-          />
-          <Rows
-            data={tableData}
-            flexArr={[1, 3]}
-            style={styles.row}
-            textStyle={styles.rowText}
-          />
-        </Table>
-        <View style={[styles.separator, { marginTop: 40 }]} />
-
-        <View style={styles.finalCommentsContainer}>
-          <Text style={styles.textBold}>Final Comments</Text>
-          <Text style={styles.text}>"{summary.finalComments}"</Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
 
       <Button
-        title="Watch Video Replay"
-        onPress={() => setDisplayVideo(true)}
+        title={displayVideo ? 'Go Back' : 'Watch Video Replay'}
+        onPress={() => setDisplayVideo(!displayVideo)}
       />
     </View>
   );
@@ -100,13 +88,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-  },
-  backgroundVideo: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
   },
   scrollView: {
     width: '100%',
@@ -143,16 +124,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     marginTop: 20,
   },
-  tableTitle: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  tableTitleText: {
-    fontSize: 18,
-    textAlign: 'center',
-    maxHeight: 50,
-    maxWidth: 200,
-  },  
   headerRow: {
     backgroundColor: '#FFFFFF',
   },

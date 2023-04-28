@@ -16,7 +16,6 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles, { button } from '../styles/LiveFormAnalyserStyle';
 import { FinalSummary, RootStackScreenProps } from '../../types';
-import Button from '../components/Button';
 
 
 export interface ISettingsState {
@@ -99,9 +98,8 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
           }
         }
       };
-  
       const intervalId = setInterval(fetchFormFeedback, 1000 / settings.framerate);
-  
+
       return () => {
         clearInterval(intervalId);
         abortController.abort();
@@ -110,10 +108,8 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
   }, [streaming]);
 
   const handleFormFeedback = (data: FormFeedback[]) => {
-    // Process the feedback data
     data.forEach((feedback: FormFeedback) => {
       const tag = feedback.tag;
-      // TODO: NEED TO CHANGE BACK END TO RETURN A DICT OF {tag: 'SET_START_COUNTDOWN'|'STATE_SEQUENCE'|'NOT_DETECTED'|'FEEDBACK'|'TIP', message: string} | {tag: bloo, summary: FinalFeedback}
 
       let priority = -1;
       if (tag === 'SET_ENDED' && feedback.summary) {
@@ -121,6 +117,9 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
         initialiseStates();
 
         // TODO: add videoUri
+          // request video from backend (need to implement this in backend)
+          // if not available, use ''
+
         navigation.navigate(
           'PostSetSummary',
           { summary: feedback.summary, videoUri: '' }
@@ -130,18 +129,15 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
       } else {
         const message = feedback.message;
         if (tag === 'SET_START_COUNTDOWN') {
-          // TODO: if timer resets, warn the user to stay still
           if (parseFloat(message) < 0.0) {
             setCountdownTimer('0');
             setSetStarted(true);
           } else {
             setCountdownTimer(message);
           }
-
           return;
         } else if (tag === 'STATE_SEQUENCE') {
           setRepCounter(prevRepCounter => prevRepCounter + 1);
-
           return;
         } else if (tag === 'NOT_DETECTED') {
           priority = 1

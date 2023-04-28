@@ -19,15 +19,13 @@ def upload_video():
     print('Processing video from client...')
 
     # Save the uploaded video to a temporary file
-    temp_video_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    video_data = base64.b64decode(video_base64)
-    with open(temp_video_file.name, 'wb') as f:
-        f.write(video_data)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp_file:
+        video_data = base64.b64decode(video_base64)
+        with open(tmp_file.name, 'wb') as f:
+            f.write(video_data)
 
-    # Process the video file using MediaPipeDetector (or any other processing)
-    temp_proc_file, final_summary = form_analyser.analyse(temp_video_file.name)
-    temp_video_file.close()
-    os.unlink(temp_video_file.name)
+        # Process the video file using MediaPipeDetector (or any other processing)
+        temp_proc_file, final_summary = form_analyser.analyse(tmp_file.name)
 
     # Encode the processed video
     with open(temp_proc_file.name, 'rb') as videoFile:
