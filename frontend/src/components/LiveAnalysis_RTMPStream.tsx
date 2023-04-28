@@ -29,18 +29,19 @@ const ip = '192.168.0.28';
 const FEEDBACK_URL = `http://${ip}:5000/form-feedback`;
 
 export default function App() {
-  // LOCAL STATE
-  // Stream view
   const [streaming, setStreaming] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'NONE'|'GOOD'|'TIP'|'CRITICAL'>('NONE');
+  const [feedbackTimer, setFeedbackTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [countdownTimer, setCountdownTimer] = useState<string>('');
+  const [repCounter, setRepCounter] = useState(0);
+  const [displayedFeedback, setDisplayedFeedback] = useState<{tag: string, message: string, priority: number}>({tag: '', message: '', priority: -1});
+
   const [camera, setCamera] = useState<'front' | 'back'>('front');
   const [warning, setWarning] = useState<{
     display: boolean;
     message: string;
   }>({ display: false, message: '' });
-  const [formFeedback, setFormFeedback] = useState<string>('');
 
-  // CONSTANTS
   const settings: ISettingsState = {
     resolution: '720p',
     framerate: 10, // TODO: try higher fps here?
@@ -54,8 +55,9 @@ export default function App() {
   const growAnim = useRef(new Animated.Value(0)).current;
 
   const initialiseStates = () => {
-    setFormFeedback('');
+    setDisplayedFeedback({tag: '', message: '', priority: -1});
     setFeedbackType('NONE');
+    setRepCounter(0);
   }
 
   useEffect(() => {
@@ -95,28 +97,62 @@ export default function App() {
   };
 
   const handleFormFeedback = (data: any) => {
-    setFormFeedback(data.join(', '));
+    // Process the feedback data
+    data.forEach((feedback: any) => {
+      const tag = feedback[0];
+      const message = feedback[1];
 
-    // TODO: for each feedback in data, figure out what to do, add to queue?
-      // Either take highest priority point or,
-      // add to queue and display in priority order
+      let priority = -1;
+      if (tag === 'SET_START_COUNTDOWN') {
+        if (parseFloat(message) < 0.0) {
+          setCountdownTimer('0');
+        } else {
+          setCountdownTimer(message);
+        }
 
-    const tags = data.map(feedback => feedback[0]);
-    if (tags.includes('FEEDBACK') || (tags.includes('USER_INFO') && data.map(feedback => feedback[0]).includes('Not Detected'))) {
-      setFeedbackType('CRITICAL');
-    } else if (tags.includes('TIP')) {
-      setFeedbackType('TIP');
-    } else if (tags.includes('STATE_SEQUENCE')) {
-      setFeedbackType('GOOD');
-    } else {
-      setFeedbackType('NONE');
-    }
+        return;
+      } else if (tag === 'STATE_SEQUENCE') {
+        setRepCounter(prevRepCounter => prevRepCounter + 1);
+
+        return;
+      } else if (tag === 'SET_ENDED') {
+        initialiseStates();
+        priority = 0
+      } else if (tag === 'NOT_DETECTED') {
+        priority = 1
+      } else if (tag === 'FEEDBACK') {
+        priority = 2
+      } else if (tag === 'TIP') {
+        priority = 3
+      }
+
+      if (priority !== -1 && (displayedFeedback.priority === -1 || priority < displayedFeedback.priority)) {
+        if (priority === 1 || priority === 2) {
+          setFeedbackType('CRITICAL')
+        } else if (priority === 3) {
+          setFeedbackType('TIP')
+        } else {
+          setFeedbackType('NONE');
+        }
+        
+        if (feedbackTimer) {
+          clearTimeout(feedbackTimer);
+        }
+        setDisplayedFeedback({
+          tag,
+          message,
+          priority
+        });
+        setFeedbackTimer(setTimeout(() => {
+          setDisplayedFeedback(prev => ({...prev, message: '', priority: -1}));
+          setFeedbackType('NONE');
+        }, 3000));
+      }
+    });
   }
 
   const handleStreaming = (): void => {
-    // Reset warning
     setWarning({ display: false, message: '' });
-    // No RTMP
     if (settings.rtmpEndpoint.trim().length === 0) {
       setWarning({
         display: true,
@@ -124,7 +160,6 @@ export default function App() {
       });
       return;
     }
-    // No stream key
     if (settings.streamKey.trim().length === 0) {
       setWarning({
         display: true,
@@ -156,7 +191,6 @@ export default function App() {
     else setCamera('back');
   };
 
-  // RETURN
   return (
     <View style={style.container}>
       <StatusBar animated={true} barStyle="light-content" />
@@ -219,9 +253,21 @@ export default function App() {
         </Animated.View>
       )}
 
-      {formFeedback !== '' && (
+      {countdownTimer !== '' && (
+        <View style={style.countdownTimerContainer}>
+          <Text style={style.countdownTimerText}>{displayedFeedback.message}</Text>
+        </View>
+      )}
+
+      {displayedFeedback.message !== '' && (
         <View style={style.formFeedbackContainer}>
-          <Text style={style.formFeedbackText}>{formFeedback}</Text>
+          <Text style={style.formFeedbackText}>{displayedFeedback.message}</Text>
+        </View>
+      )}
+
+      {streaming && (
+        <View style={style.repCounterContainer}>
+          <Text style={style.repCounterText}>Reps: {repCounter}</Text>
         </View>
       )}
     </View>

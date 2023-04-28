@@ -54,7 +54,9 @@ log.setLevel(logging.ERROR)
 @app.route('/form-feedback', methods=['GET'])
 def get_form_feedback():
     global current_f
-    return jsonify(current_f)
+    json_f = jsonify(current_f)
+    current_f = []
+    return json_f
 
 def run_flask_app():
     app.run(host=ip, port=port)
@@ -93,6 +95,7 @@ try:
 
         # TODO: change this to append feedback to current_f and then /form-feedback method clears it
 
+        # NOTE: comment this bit out in real testing for performance reasons
         if immediate_f not in [[], current_f]:
             for tag, f in immediate_f:
                 if tag in ['FEEDBACK', 'STATE_SEQUENCE']:

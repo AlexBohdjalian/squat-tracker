@@ -122,12 +122,12 @@ class SquatFormAnalyser():
         feedback = []
 
         if pose_landmarks is None:
-            feedback = [('USER_INFO', 'Not Detected')]
+            feedback = [('NOT_DETECTED', 'User not Detected')]
 
             self.no_landmarks_count += 1
             if self.no_landmarks_count >= self.no_landmarks_count_threshold:
                 # TODO: return summary here?
-                feedback = [('USER_INFO', 'Set ended (user not detected)')]
+                feedback = [('SET_ENDED', 'User not detected for a while')]
                 
                 self.__initialise_state()
                 self.form_analyser.initialise_state()
@@ -152,7 +152,7 @@ class SquatFormAnalyser():
                     # TODO: review how well __check_set_has_ended works
                     if self.__check_set_has_ended(most_visible_joints_dict['ankle']):
                         # TODO: return summary here?
-                        feedback = [('USER_INFO', 'Set has ended')]
+                        feedback = [('SET_ENDED', 'User has moved out of position')]
 
                         self.__initialise_state()
                         self.form_analyser.initialise_state()
@@ -167,7 +167,7 @@ class SquatFormAnalyser():
                     self.no_confident_detection_count += 1
                     if self.no_confident_detection_count >= self.no_detection_count_threshold:
                         # TODO: return summary here?
-                        feedback = [('USER_INFO', 'Set ended (user not detected)')]
+                        feedback = [('SET_ENDED', 'User not confidently detected for a while')]
 
                         self.__initialise_state()
                         self.form_analyser.initialise_state()
@@ -188,7 +188,7 @@ class SquatFormAnalyser():
                         # TODO: change this to work with frame count, not time as causes flakiness and inaccuracy
                         time_remaining = round(self.stationary_duration - time.time() + self.stationary_start_time, 2)
 
-                    feedback = [('USER_INFO', f'Stay still for {time_remaining} seconds to start set')]
+                    feedback = [('SET_START_COUNTDOWN', time_remaining)]
 
                     most_visible_side = self.form_analyser.get_most_visible_side(
                         left_joints,
@@ -204,7 +204,7 @@ class SquatFormAnalyser():
                         self.set_has_begun = True
                         self.joint_buffer = []
                 else:
-                    feedback = [('USER_INFO', 'Insufficient joints visible')]
+                    feedback = [('NOT_DETECTED', 'Insufficient joints visible')]
 
                     self.stationary_start_time = None
                     self.joint_buffer = []
@@ -295,6 +295,7 @@ class SquatFormAnalyser():
         # TODO: check this and move 35 (constant) into form_thresholds
         if self.state_sequence[-1] == TRANSITION and knee_angle < 35 and self.form_thresholds['safe_hip_angle'] < hip_angle:
             # TODO: TRANSITION happens early-ish, so this check is done while close to upright. causes misread. check that knee angle is certain amount?
+            # TODO: improve this feedback (and all others)
             final_feedback.append(('FEEDBACK', f'Bend Backwards (knee: {knee_angle}, hip: {hip_angle})'))
 
         # TODO: make this more robust if set stage measurement fails
