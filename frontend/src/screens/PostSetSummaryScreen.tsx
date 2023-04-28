@@ -1,7 +1,9 @@
+import { useState, useRef } from 'react';
 import { StyleSheet, ScrollView, LogBox } from 'react-native';
+import { Video } from 'expo-av';
 import { Table, Row, Rows } from 'react-native-table-component';
 import { Text, View } from '../components/Themed';
-import { FinalSummary, RootStackParamList, RootStackScreenProps } from '../../types';
+import { RootStackParamList, RootStackScreenProps } from '../../types';
 import Button from '../components/Button';
 import { RouteProp } from '@react-navigation/native';
 
@@ -14,14 +16,35 @@ interface IProps {
 }
 
 export default function PostSetSummaryScreen({ navigation, route }: IProps) {
-  const finalSummary: FinalSummary = route.params;
+  const [displayVideo, setDisplayVideo] = useState<boolean>(false);
+  const { summary, videoUri }: RootStackParamList["PostSetSummary"] = route.params;
   const tableHeaders = ['Rep', 'Mistake'];
-  const tableData = finalSummary.mistakesMade.map((mistakeInfo) => {
+  const tableData = summary.mistakesMade.map((mistakeInfo) => {
     return [mistakeInfo.rep, mistakeInfo.mistakes.map((mistake, index) => {
       const suffix = (index === mistakeInfo.mistakes.length - 1) ? '\n' : '';
       return `\n\u2022 ${mistake}${suffix}`;
     })];
   });
+
+  if (displayVideo) {
+    return (
+      <View style={styles.container}>
+        <Video
+          source={{ uri: videoUri }}
+          style={{ width: '100%', height: '91%' }}
+          rate={1.0}
+          isMuted={true}
+          shouldPlay
+          useNativeControls
+          isLooping
+        />
+        <Button
+          title="Go Back"
+          onPress={() => setDisplayVideo(false)}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -30,12 +53,12 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
         <View style={styles.repsContainer}>
           <View>
             <Text style={styles.textBold}>Good Reps</Text>
-            <Text style={styles.text}>{finalSummary.goodReps}</Text>
+            <Text style={styles.text}>{summary.goodReps}</Text>
           </View>
 
           <View>
             <Text style={styles.textBold}>Bad Reps</Text>
-            <Text style={styles.text}>{finalSummary.badReps}</Text>
+            <Text style={styles.text}>{summary.badReps}</Text>
           </View>
         </View>
         <View style={styles.separator} />
@@ -59,13 +82,13 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
 
         <View style={styles.finalCommentsContainer}>
           <Text style={styles.textBold}>Final Comments</Text>
-          <Text style={styles.text}>"{finalSummary.finalComments}"</Text>
+          <Text style={styles.text}>"{summary.finalComments}"</Text>
         </View>
       </ScrollView>
 
       <Button
         title="Watch Video Replay"
-        onPress={() => console.log('Video replay button pressed')}
+        onPress={() => setDisplayVideo(true)}
       />
     </View>
   );
@@ -77,6 +100,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
+  },
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
   },
   scrollView: {
     width: '100%',

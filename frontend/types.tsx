@@ -19,7 +19,7 @@ export type RootStackParamList = {
   NotFound: undefined;
   LiveFormAnalyser: undefined;
   FormReview: { videoUri: string, formData: any };
-  PostSetSummary: FinalSummary;
+  PostSetSummary: { summary: FinalSummary, videoUri: string };
 };
 
 export type RootStackScreenProps<Screen extends keyof RootStackParamList> = NativeStackScreenProps<
@@ -42,7 +42,7 @@ export type RootTabParamList = {
   Settings: undefined;
   AppInfo: undefined;
   FormReview: { videoUri: string, formData: any };
-  PostSetSummary: FinalSummary;
+  PostSetSummary: { summary: FinalSummary, videoUri: string };
 };
 
 export type RootTabScreenProps<Screen extends keyof RootTabParamList> = CompositeScreenProps<

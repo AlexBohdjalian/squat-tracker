@@ -120,9 +120,10 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
         handleStreaming();
         initialiseStates();
 
+        // TODO: add videoUri
         navigation.navigate(
           'PostSetSummary',
-          feedback.summary
+          { summary: feedback.summary, videoUri: '' }
           // {goodReps: 4, badReps: 3, mistakesMade: [{rep: 1, mistakes: ['Poor Depth']}, {rep: 3, mistakes: ['Shoulders Not Level', 'Hips Shifted To The Left']}, {rep: 7, mistakes: ['Hips Not Vertically Aligned With Feet']}], finalComments: "Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! "}
         )
         priority = 0

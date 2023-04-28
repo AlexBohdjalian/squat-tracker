@@ -1,6 +1,5 @@
-import axios from 'axios';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Modal, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -8,46 +7,22 @@ import Button from '../components/Button';
 import { Text, View } from '../components/Themed';
 import { RootTabScreenProps } from '../../types';
 
-enum ModalStates {
-  NOT_VISIBLE = 'not-visible',
-  PROCESSING = 'processing',
-  SAVING = 'saving',
-  DONE = 'done',
-}
+const ip = '192.168.0.28';
+const UPLOAD_VIDEO_ENDPOINT = `http://${ip}:5000/upload_video`;
 
 export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
-  const [modalState, setModalState] = useState<ModalStates>(ModalStates.NOT_VISIBLE);
-  const [savedVideoUri, setSavedVideoUri] = useState('');
-  const [squatFormData, setSquatFormData] = useState();
+  const [galleyButtonDisabled, setGalleryButtonDisabled] = useState<boolean>(true);
 
-  // useEffect that asks for MediaLibrary permissions once at the start
   useEffect(() => {
     (async () => {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         alert('Sorry, we need camera roll permissions to make this work!');
+      } else {
+        setGalleryButtonDisabled(false);
       }
     })();
   }, []);
-
-  const getModalText = (state: ModalStates) => {
-    if (state == ModalStates.PROCESSING) {
-      return 'Video is being processed'
-    }
-    if (state == ModalStates.SAVING) {
-      return 'Processed video is being saved'
-    }
-    if (state == ModalStates.DONE) {
-      return 'Done'
-    }
-  }
-
-  const handleSeeVideo = () => {
-    setModalState(ModalStates.NOT_VISIBLE);
-    if (savedVideoUri && squatFormData) {
-      navigation.navigate('FormReview', { videoUri: savedVideoUri, formData: squatFormData });
-    }
-  }
 
   const selectAndProcessVideo = async () => {
     try {
@@ -60,50 +35,38 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
       });
 
       if (!result.canceled) {
-        setModalState(ModalStates.PROCESSING)
-
+        // Send video to backend for processing
         const base64VideoData = await FileSystem.readAsStringAsync(result.assets[0].uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
+        const response = await fetch(UPLOAD_VIDEO_ENDPOINT, {
+          method: 'POST',
+          body: base64VideoData
+        });
 
-        try {
-          // TODO: find better way to stream video to server
+        if (response.status === 200) {
+          const jsonData = await response.json();
+          const processedBase64 = jsonData['processed_video'];
+          const finalSummary = jsonData['final_summary'];
 
-          // think about what data should be received and how to display
-          // TODO: consider using file-stream here to improve speed
-          // TODO: or, use this https://narainsreehith.medium.com/upload-image-video-to-flask-backend-from-react-native-app-expo-app-1aac5653d344
-          const { data } = await axios.post('http://192.168.0.28:5000/process_video', {
-            'video': base64VideoData
-          });
-          const videoData = data['video']
-          setSquatFormData(data['analysis'])
-
-          setModalState(ModalStates.SAVING);
-          // Save the received video (video_data)
+          // Save the video to the device
           const fileUri = FileSystem.documentDirectory + 'received_video.mp4';
-          FileSystem.writeAsStringAsync(fileUri, videoData, {
+          await FileSystem.writeAsStringAsync(fileUri, processedBase64, {
             encoding: FileSystem.EncodingType.Base64,
           });
-
-          // save this to an asset album e.g. 'SquatTracker'
           const asset = await MediaLibrary.createAssetAsync(fileUri);
-          if (Platform.OS === 'ios') {
-            const hash = asset.id.split('/')[0];
-            const videoUri = `assets-library://asset/asset.mp4?id=${hash}&ext=mp4`;
-            setModalState(ModalStates.DONE);
-            setSavedVideoUri(videoUri);
-          } else {
-            const videoUri = asset.uri;
-            setModalState(ModalStates.DONE);
-            setSavedVideoUri(videoUri);
-          }
-        } catch (e) {
-          setModalState(ModalStates.NOT_VISIBLE) // change this to error // also change modal to be component
-          console.warn(e);
+
+          console.log(finalSummary);
+          navigation.navigate(
+            'PostSetSummary',
+            { summary: finalSummary, videoUri: asset.uri }
+          );
+        } else {
+          console.warn('Response code ' + response.status);
         }
       }
     } catch (e) {
-      console.warn(e)
+      console.warn(e);
     }
   }
 
@@ -119,25 +82,11 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
           />
           <Button
             onPress={selectAndProcessVideo}
-            title="Select Video From Gallery (Needs Fixing)"
+            title="Select Video From Gallery"
+            disabled={galleyButtonDisabled}
           />
         </View>
       </View>
-      <Modal
-        animationType='slide'
-        transparent={true}
-        visible={modalState != ModalStates.NOT_VISIBLE}
-        onRequestClose={() => setModalState(ModalStates.NOT_VISIBLE)}
-      >
-        <View style={styles.modalView}>
-          <Text style={styles.modalText}>{getModalText(modalState)}</Text>
-          {modalState == ModalStates.DONE? (
-            <Button title="See Video" onPress={handleSeeVideo} />
-          ) : (
-            <ActivityIndicator size={'small'} />
-          )}
-        </View>
-      </Modal>
     </View>
   );
 }
