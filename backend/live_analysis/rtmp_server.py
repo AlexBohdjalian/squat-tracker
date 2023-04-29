@@ -27,7 +27,7 @@ ffmpeg_args = [
     '-i', video_stream_input,
     '-copyts',
     '-fps_mode', 'cfr',  # Ensure that video frames are synchronized
-    '-r', '10',  # Set the output frame rate to 10 FPS # TODO: get this based in input stream
+    '-r', '10',  # Set the output frame rate to 10 FPS
     '-c:v', 'libx264',
     '-preset', 'ultrafast',
     '-tune', 'zerolatency',

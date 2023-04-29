@@ -86,7 +86,7 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
       {displayVideo ? (
         <Video
           source={{ uri: videoUri }}
-          style={{ width: '100%', height: '91%' }} // TODO: align with middle/re-size to fit
+          style={{ width: '100%', height: '91%' }}
           rate={1.0}
           isMuted={true}
           shouldPlay

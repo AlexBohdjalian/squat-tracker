@@ -53,8 +53,8 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
 
   const settings: ISettingsState = {
     resolution: '720p',
-    framerate: 10, // TODO: try higher fps here?
-    videoBitrate: 1400, // TODO: remove and make automatic? see how this impacts speed
+    framerate: 10,
+    videoBitrate: 1400,
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
   };
@@ -76,7 +76,9 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
     initialiseStates();
 
     // TODO: add videoUri
-      // request video from backend (need to implement this in backend)
+      // either
+        // request video from backend (need to implement this in backend)
+        // save video client side and then process in same way as non-live analysis (might not be doable)
       // if not available, use ''
 
     navigation.navigate(

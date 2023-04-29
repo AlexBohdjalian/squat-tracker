@@ -34,7 +34,7 @@ class SquatFormAnalyser():
                 landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
             )
 
-            # TODO: Do stuff with video
+            # TODO: Do form analysis
 
             if show_output:
                 cv2.imshow('Video', frame)
