@@ -16,6 +16,8 @@ __pycache__/
 frontend_ejected/
 .vscode/*
 backend/assets/me_bad_form_squat.mp4
+frontend_archived/
+backend_archived/
 
 # macOS
 .DS_Store
