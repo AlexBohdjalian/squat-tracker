@@ -71,6 +71,21 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
     setSetStarted(false);
   }
 
+  const handleEndSet = (summary: FinalSummary, videoUri: string) => {
+    handleStreaming();
+    initialiseStates();
+
+    // TODO: add videoUri
+      // request video from backend (need to implement this in backend)
+      // if not available, use ''
+
+    navigation.navigate(
+      'PostSetSummary',
+      { summary: summary, videoUri: videoUri }
+      // {goodReps: 4, badReps: 3, mistakesMade: [{rep: 1, mistakes: ['Poor Depth']}, {rep: 3, mistakes: ['Shoulders Not Level', 'Hips Shifted To The Left']}, {rep: 7, mistakes: ['Hips Not Vertically Aligned With Feet']}], finalComments: "Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! "}
+    )
+  }
+
   useEffect(() => {
     const grow = () => {
       Animated.timing(growAnim, {
@@ -92,11 +107,7 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
           if (response.data) {
             handleFormFeedback(response.data);
           }
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error('Error fetching form feedback:', error);
-          }
-        }
+        } catch {}
       };
       const intervalId = setInterval(fetchFormFeedback, 1000 / settings.framerate);
 
@@ -113,30 +124,23 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
 
       let priority = -1;
       if (tag === 'SET_ENDED' && feedback.summary) {
-        handleStreaming();
-        initialiseStates();
+        handleEndSet(feedback.summary, '');
 
-        // TODO: add videoUri
-          // request video from backend (need to implement this in backend)
-          // if not available, use ''
-
-        navigation.navigate(
-          'PostSetSummary',
-          { summary: feedback.summary, videoUri: '' }
-          // {goodReps: 4, badReps: 3, mistakesMade: [{rep: 1, mistakes: ['Poor Depth']}, {rep: 3, mistakes: ['Shoulders Not Level', 'Hips Shifted To The Left']}, {rep: 7, mistakes: ['Hips Not Vertically Aligned With Feet']}], finalComments: "Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! "}
-        )
-        priority = 0
+        return;
       } else {
         const message = feedback.message;
         if (tag === 'SET_START_COUNTDOWN') {
           if (parseFloat(message) < 0.0) {
             setCountdownTimer('0');
-            setSetStarted(true);
           } else {
             setCountdownTimer(message);
           }
           return;
-        } else if (tag === 'STATE_SEQUENCE') {
+        } else if (tag === 'SET_STARTED') {
+          setSetStarted(true);
+
+          return;
+        } else if (tag === 'REP_DETECTED') {
           setRepCounter(prevRepCounter => prevRepCounter + 1);
           return;
         } else if (tag === 'NOT_DETECTED') {

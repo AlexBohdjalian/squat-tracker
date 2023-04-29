@@ -26,7 +26,6 @@ class SquatFormAnalyser():
             if not success:
                 break
 
-            # Do stuff with video
             landmarks = self.pose_estimator.make_prediction(frame)
             mp.solutions.drawing_utils.draw_landmarks(
                 frame,
@@ -34,6 +33,8 @@ class SquatFormAnalyser():
                 mp.solutions.pose.POSE_CONNECTIONS,
                 landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
             )
+
+            # TODO: Do stuff with video
 
             if show_output:
                 cv2.imshow('Video', frame)

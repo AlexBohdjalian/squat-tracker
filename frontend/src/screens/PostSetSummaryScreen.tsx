@@ -1,27 +1,85 @@
 import { useState } from 'react';
-import { StyleSheet, ScrollView, LogBox } from 'react-native';
+import { StyleSheet, ScrollView, LogBox, TextInput } from 'react-native';
 import { Video } from 'expo-av';
 import { Table, Row, Rows } from 'react-native-table-component';
 import { Text, View } from '../components/Themed';
-import { RootStackParamList } from '../../types';
+import { FinalSummary, RootStackParamList, RootStackScreenProps } from '../../types';
 import Button from '../components/Button';
 import { RouteProp } from '@react-navigation/native';
 
 // NOTE: there is a bug in react-native-table-component that can be ignored
 LogBox.ignoreLogs(['Warning: Failed prop type: Invalid prop `textStyle` of type `array` supplied to `Cell`, expected `object`.'])
 
-export default function PostSetSummaryScreen(route: RouteProp<RootStackParamList, 'PostSetSummary'>) {
+interface IProps {
+  navigation: RootStackScreenProps<'PostSetSummary'>;
+  route: RouteProp<RootStackParamList, 'PostSetSummary'>;
+}
+
+export default function PostSetSummaryScreen({ navigation, route }: IProps) {
   const [displayVideo, setDisplayVideo] = useState<boolean>(false);
+  const [canDoRpe, setCanDoRpe] = useState<boolean>(false);
+  const [input1RM, setInput1RM] = useState('');
+  const [weightUsed, setWeightUsed] = useState('');
   const { summary, videoUri }: RootStackParamList["PostSetSummary"] = route.params;
   const tableHeaders = ['Rep', 'Mistake'];
-  const tableData = summary.mistakesMade.map((mistakeInfo) => {
-    return [mistakeInfo.rep, mistakeInfo.mistakes.map((mistake, index) => {
-      const suffix = (index === mistakeInfo.mistakes.length - 1) ? '\n' : '';
-      return `\n\u2022 ${mistake}${suffix}`;
-    })];
-  });
+  const tableData = summary.mistakesMade
+    .filter(mistakeInfo => mistakeInfo.mistakes.length > 0)
+    .map(mistakeInfo => [
+      mistakeInfo.rep,
+      mistakeInfo.mistakes.map((mistake, index) => {
+        const suffix = (index === mistakeInfo.mistakes.length - 1) ? '\n' : '';
+        return `\n\u2022 ${mistake}${suffix}`;
+      })
+  ]);
 
-  // TODO: change this to get the same stuff as FormReviewScreen
+  function arraysEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length) return false;
+    if (arr1 == null || arr2 == null) return false;
+
+    for (let i = 0; i < arr1.length; i++) {
+      if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+  }
+
+  const determineRepQuality = (rep: string[]) => {
+    let repQuality = 'Unable to determine.';
+    if (arraysEqual(rep, ["STANDING", "TRANSITION", "BOTTOM", "TRANSITION"])) {
+      repQuality = 'The quality of the rep was good!';
+    } else if (arraysEqual(rep, ["STANDING", "TRANSITION"])) {
+      repQuality = 'Depth in this rep may have been poor.'
+    } else if (arraysEqual(rep, ["STANDING", "TRANSITION", "BOTTOM", "TRANSITION"])) {
+      repQuality = 'Your knees may not have fully locked out in this rep.'
+    }
+
+    return repQuality;
+  }
+
+  const handleDoRpe = () => {
+    if (canDoRpe) {
+      setCanDoRpe(false);
+    } else if (!Number.isNaN(input1RM) && parseFloat(input1RM) > 0 && parseFloat(weightUsed) > 0) {
+      setCanDoRpe(true);
+    }
+  }
+
+  const calculateRPE = (reps: FinalSummary['stateSequences']) => {
+    const percent1RM = parseFloat(weightUsed) / parseFloat(input1RM);
+
+    const firstRepConcentric = reps[0].durations[1];
+    const lastRepConcentric = reps[reps.length - 1].durations[1];
+
+    const targetVelocity = lastRepConcentric / firstRepConcentric;
+    const RIR = Math.log(percent1RM) / Math.log(targetVelocity);
+
+    const RPE = 10 - RIR;
+    return roundNumber(RPE, 1);
+  }
+
+  const roundNumber = (num: number, dp: number) => {
+    const pow = Math.pow(10, dp);
+    return JSON.stringify(Math.round(num * pow) / pow);
+  }
 
   return (
     <View style={styles.container}>
@@ -71,6 +129,59 @@ export default function PostSetSummaryScreen(route: RouteProp<RootStackParamList
             <Text style={styles.textBold}>Final Comments</Text>
             <Text style={styles.text}>"{summary.finalComments}"</Text>
           </View>
+          <View style={[styles.separator, { marginTop: 40 }]} />
+          
+          <View style={styles.detailedRepsContainer}>
+            <Text style={styles.textBold}>Detailed Breakdown of Reps</Text>
+            {summary.stateSequences.map((sequence, index) => (
+              <View key={index} style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={styles.textBold}>Rep: {index}</Text>
+                <Text style={styles.text}>Eccentric time: {roundNumber(sequence.durations[0], 3)} secs</Text>
+                <Text style={styles.text}>Concentric time: {roundNumber(sequence.durations[1], 3)} secs</Text>
+                <Text style={styles.text}>Overall: {determineRepQuality(sequence.states)}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={[styles.separator, { marginTop: 40 }]} />
+
+          <View style={{ alignItems: 'center' }}>
+            <Text style={styles.textBold}>Rating of Perceived Exertion (RPE)</Text>
+            {canDoRpe ? (
+              <View style={{ alignItems: 'center' }}>
+                <Text style={styles.text}>Estimated RPE: {calculateRPE(summary.stateSequences)}</Text>
+                <Button
+                  title={'Try again'}
+                  onPress={handleDoRpe}
+                  style={{ width: '40%', height: '22%', marginTop: 0 }}
+                />
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row' }}>
+                <View>
+                  <TextInput
+                    style={styles.textInput}
+                    onChangeText={setInput1RM}
+                    value={input1RM}
+                    placeholder="Enter 1 rep max (kg)"
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    onChangeText={setWeightUsed}
+                    value={weightUsed}
+                    placeholder="Enter weight used (kg)"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <Button
+                  title={'Calculate RPE'}
+                  onPress={handleDoRpe}
+                  style={{ width: '40%', height: '40%', marginTop: 40 }}
+                />
+              </View>
+            )}
+          </View>
+          <View style={[styles.separator, { marginTop: 40 }]} />
         </ScrollView>
       )}
 
@@ -144,5 +255,14 @@ const styles = StyleSheet.create({
   },
   finalCommentsContainer: {
     paddingBottom: 20,
+  },
+  detailedRepsContainer: {
+    alignItems: 'center',
+  },
+  textInput: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    padding: 10,
   },
 });

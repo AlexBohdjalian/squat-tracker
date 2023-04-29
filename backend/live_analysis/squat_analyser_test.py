@@ -47,6 +47,7 @@ for vid in videos:
         if not success:
             break
 
+        # NOTE: this script is sorta broken after STATE_SEQUENCE TAG WAS REMOVED
         if feedback != prev_feedback:
             prev_feedback = feedback
             if len(feedback) > 0 and feedback[0]['tag'] not in ['SET_START_COUNTDOWN', 'NOT_DETECTED', 'TIP']:

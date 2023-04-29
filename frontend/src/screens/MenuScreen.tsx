@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import Button from '../components/Button';
 import { Text, View } from '../components/Themed';
-import { RootTabScreenProps } from '../../types';
+import { FinalSummary, RootTabScreenProps } from '../../types';
 
 const ip = '192.168.0.28';
 const UPLOAD_VIDEO_ENDPOINT = `http://${ip}:5000/upload_video`;
@@ -70,6 +70,24 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
     }
   }
 
+  // const testData: FinalSummary = {
+  //   goodReps: 1,
+  //   badReps: 3,
+  //   mistakesMade: [
+  //     {rep: 1, mistakes: []},
+  //     {rep: 2, mistakes: ['Hips went out of alignment with feet', 'Shoulders went out of alignment with feet']},
+  //     {rep: 3, mistakes: ['Hips went out of alignment with feet']},
+  //     {rep: 4, mistakes: ['Hips went out of alignment with feet', 'Shoulders were not level', 'Shoulders went out of alignment with feet']},
+  //   ],
+  //   stateSequences: [
+  //     {durations: [1.066868543624878, 0.1766049861907959], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
+  //     {durations: [0.8746097087860107, 0.2374439239501953], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
+  //     {durations: [0.9108970165252686, 0.3012425899505615], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
+  //     {durations: [0.7108970165252686, 0.2012425899505615], states: ['STANDING', 'TRANSITION']},
+  //   ],
+  //   finalComments: 'NOT IMPLEMENTED YET'
+  // }
+
   return (
     <View style={{flex: 1}}>
       <View style={styles.container}>
@@ -85,6 +103,16 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
             title="Select Video From Gallery"
             disabled={galleyButtonDisabled}
           />
+          {/* <Button
+            onPress={() => navigation.navigate(
+              'PostSetSummary',
+              {
+                summary: testData,
+                videoUri: ''
+              }
+            )}
+            title="Test post set summary"
+          /> */}
         </View>
       </View>
     </View>

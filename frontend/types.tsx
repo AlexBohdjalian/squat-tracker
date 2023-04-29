@@ -34,6 +34,10 @@ export type FinalSummary = {
     rep: number,
     mistakes: string[],
   }[],
+  stateSequences: {
+    durations: [number, number],
+    states: string[]
+  }[],
   finalComments: string,
 }
 

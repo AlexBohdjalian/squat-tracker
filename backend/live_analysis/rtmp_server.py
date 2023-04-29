@@ -9,11 +9,8 @@ import squat_analyser as sa
 from flask import Flask, jsonify
 
 
-# TODO: final summary of workout? Or make it simultaneously record video for post-processing?
-
 NORMAL = '\u001b[0m'
 YELLOW_BG = '\u001b[43m'
-
 
 # Declare constants for rtmp stream
 ip = socket.gethostbyname(socket.gethostname())
@@ -65,41 +62,41 @@ flask_thread.daemon = True
 flask_thread.start()
 
 
-# TODO: put this into a request e.g. /start-server and in component add request to endpoint?
-
 # Begin re-streaming to a local endpoint
 proc1 = subprocess.Popen(
     ffmpeg_args,
-    stdout=subprocess.DEVNULL, # Hide output so we can just see form data
+    stdout=subprocess.DEVNULL,
     stderr=subprocess.STDOUT
 )
 time.sleep(3) # Allow server to start before opening rtmp stream
 
 
-# Read the local rtmp stream
-cap.open(local_rtmp_endpoint)
+# start_string = 'Input #0, flv, from '
+# print('Waiting for client to connect...')
+# while True:
+#     output = proc1.stdout.readline().decode('utf-8').strip()
+#     if start_string in output:
+#         print('Connection request received...')
+#         break
 
-if not cap.isOpened():
-    print('Stream not open')
-    cap.release()
-    proc1.terminate()
-    exit()
+cap.open(local_rtmp_endpoint)
 print('Stream started!')
 
+show_stream = False
+show_feedback = True
 try:
     while True:
         # Process the frame
-        immediate_f, success = form_analyser.analyse(cap, show_output=False)
+        immediate_f, success = form_analyser.analyse(cap, show_output=show_stream)
         if not success:
             break
 
-        # TODO: change this to append feedback to current_f and then /form-feedback method clears it
-
-        # NOTE: comment this bit out in real testing for performance reasons
-        if immediate_f not in [[], current_f]:
+        if show_feedback and immediate_f not in [[], current_f]:
             for f in immediate_f:
-                if f['tag'] in ['FEEDBACK', 'STATE_SEQUENCE']:
+                if f['tag'] in ['FEEDBACK']:
                     print(f'{f["tag"]}: {f["message"]}')
+                elif f['tag'] == 'REP_DETECTED':
+                    print('Rep detected')
                 elif f['tag'] == 'SET_ENDED':
                     print(f'{YELLOW_BG} Final Summary: {f["summary"]}')
                 else:
@@ -110,7 +107,8 @@ try:
 except KeyboardInterrupt:
     print('Exiting gracefully...')
 
-
 cv2.destroyAllWindows()
 cap.release()
 proc1.terminate()
+
+print('Server successfully shutdown!')
