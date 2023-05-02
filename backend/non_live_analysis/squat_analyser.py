@@ -10,6 +10,10 @@ class SquatFormAnalyser():
         self.confidence_threshold = confidence_threshold
         self.pose_estimator = MediaPipeDetector(model_complexity=model_complexity)
         self.form_analyser = MediaPipe_To_Form_Interpreter(confidence_threshold=confidence_threshold)
+        self.threshold = {
+            'hips_vertically_aligned': 0.05,
+            'shoulders_vertically_aligned': 0.05,
+        }
 
     def analyse(self, video_path, show_output=False):
         cap = cv2.VideoCapture(video_path)
@@ -49,27 +53,39 @@ class SquatFormAnalyser():
                     joint_name: joints_dict[most_visible_side + joint_name]
                     for joint_name in self.form_analyser.main_joints
                 }
+                mv_toe, mv_ankle, mv_knee, mv_hip, mv_shoulder, mv_elbow = [most_visible_joints_dict[joint] for joint in ['foot_index', 'ankle', 'knee', 'hip', 'shoulder', 'elbow']]
+
+                # Calculate important angles
+                mv_ankle_angle = self.__get_angle_if_confident([mv_toe, mv_ankle, mv_knee])
+                mv_hip_angle = self.__get_angle_if_confident([mv_ankle, mv_knee, mv_hip])
+                mv_knee_angle = self.__get_angle_if_confident([mv_knee, mv_hip, mv_shoulder])
+                mv_shoulder_angle = self.__get_angle_if_confident([mv_hip, mv_shoulder, mv_elbow])
 
                 # Draw joint angles
-                for joints_for_angle in [[most_visible_joints_dict[joint] for joint in joint_set] for joint_set in [
-                    ['foot_index', 'ankle', 'knee'],
-                    ['ankle', 'knee', 'hip'],
-                    ['knee', 'hip', 'shoulder'],
-                    ['hip', 'shoulder', 'elbow']
-                ]]:
-                    if self.form_analyser.check_confidence(self.confidence_threshold, joints_for_angle):
-                        joint_angle = self.form_analyser.calc_3D_angle(*joints_for_angle)
-                        self.__draw_angle_at_joint(frame, joints_for_angle[1], joint_angle)
+                for joint, joint_angle in [
+                    (mv_ankle, mv_ankle_angle),
+                    (mv_knee, mv_hip_angle),
+                    (mv_hip, mv_knee_angle),
+                    (mv_shoulder, mv_shoulder_angle)
+                ]:
+                    if joint_angle is not None:
+                        self.__draw_angle_at_joint(frame, joint, joint_angle)
 
                 # Draw line verticals
-                for left_joint, right_joint, colour in [[joints_dict['left_' + joint], joints_dict['right_' + joint], colour] for joint, colour in [
-                    ('shoulder', (255, 0, 0)),
-                    ('hip', (0, 255, 0)),
-                    ('ankle', (0, 0, 255)),
-                ]]:
-                    if self.form_analyser.check_confidence(self.confidence_threshold, [left_joint, right_joint]):
-                        mid_point_x = int((left_joint.x + right_joint.x) * frame.shape[1] / 2)
-                        self.__draw_vertical_at_point(frame, mid_point_x, colour)
+                left_ankle, right_ankle = joints_dict['left_ankle'], joints_dict['right_ankle']
+                if self.form_analyser.check_confidence(self.confidence_threshold, [left_ankle, right_ankle]):
+                    ankle_mid_point_x = (left_ankle.x + right_ankle.x) / 2
+                    print(ankle_mid_point_x * frame.shape[1])
+                    self.__draw_vertical_at_point(frame, int(ankle_mid_point_x * frame.shape[1]), (255, 0, 0))
+
+                    for left_joint, right_joint, threshold in [[joints_dict['left_' + j], joints_dict['right_' + j], th] for j, th in [
+                        ('shoulder', self.threshold['shoulders_vertically_aligned']),
+                        ('hip', self.threshold['hips_vertically_aligned'])
+                    ]]:
+                        if self.form_analyser.check_confidence(self.confidence_threshold, [left_joint, right_joint]):
+                            mid_point_x = (left_joint.x + right_joint.x) / 2
+                            colour = (0, 255, 0) if abs(ankle_mid_point_x - mid_point_x) < threshold else (0, 0, 255)
+                            self.__draw_vertical_at_point(frame, int(mid_point_x * frame.shape[1]), colour)
 
                 # TODO: form analysis...
 
@@ -103,6 +119,12 @@ class SquatFormAnalyser():
         }
 
         return temp_video_file, final_summary
+
+    def __get_angle_if_confident(self, angles):
+        if self.form_analyser.check_confidence(self.confidence_threshold, angles):
+            return self.form_analyser.calc_3D_angle(*angles)
+
+        return None
 
     def __draw_vertical_at_point(self, frame, x_pos, colour):
         cv2.line(frame, (x_pos, 0), (x_pos, frame.shape[0]), colour, thickness=3)
