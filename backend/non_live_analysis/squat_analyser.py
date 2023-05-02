@@ -1,11 +1,15 @@
 import cv2
+import numpy as np
 from mediapipe_estimator import MediaPipeDetector
+from form_analyser import MediaPipe_To_Form_Interpreter
 import tempfile
 import mediapipe as mp
 
 class SquatFormAnalyser():
-    def __init__(self, model_complexity):
+    def __init__(self, model_complexity, confidence_threshold=0.5):
+        self.confidence_threshold = confidence_threshold
         self.pose_estimator = MediaPipeDetector(model_complexity=model_complexity)
+        self.form_analyser = MediaPipe_To_Form_Interpreter(confidence_threshold=confidence_threshold)
 
     def analyse(self, video_path, show_output=False):
         cap = cv2.VideoCapture(video_path)
@@ -26,28 +30,91 @@ class SquatFormAnalyser():
             if not success:
                 break
 
-            landmarks = self.pose_estimator.make_prediction(frame)
-            mp.solutions.drawing_utils.draw_landmarks(
-                frame,
-                landmarks,
-                mp.solutions.pose.POSE_CONNECTIONS,
-                landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
-            )
+            # Get landmarks
+            pose_landmarks = self.pose_estimator.make_prediction(frame)
 
-            # TODO: Do form analysis
+            if pose_landmarks is not None:
+                # Draw landmarks
+                mp.solutions.drawing_utils.draw_landmarks(
+                    frame,
+                    pose_landmarks,
+                    mp.solutions.pose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
+                )
+
+                # Get joint dictionaries
+                joints_dict = self.form_analyser.get_joints_dict(pose_landmarks)
+                most_visible_side = self.form_analyser.get_most_visible_side(joints_dict)
+                most_visible_joints_dict = {
+                    joint_name: joints_dict[most_visible_side + joint_name]
+                    for joint_name in self.form_analyser.main_joints
+                }
+
+                # Draw joint angles
+                for joints_for_angle in [[most_visible_joints_dict[joint] for joint in joint_set] for joint_set in [
+                    ['foot_index', 'ankle', 'knee'],
+                    ['ankle', 'knee', 'hip'],
+                    ['knee', 'hip', 'shoulder'],
+                    ['hip', 'shoulder', 'elbow']
+                ]]:
+                    if self.form_analyser.check_confidence(self.confidence_threshold, joints_for_angle):
+                        joint_angle = self.form_analyser.calc_3D_angle(*joints_for_angle)
+                        self.__draw_angle_at_joint(frame, joints_for_angle[1], joint_angle)
+
+                # Draw line verticals
+                for left_joint, right_joint, colour in [[joints_dict['left_' + joint], joints_dict['right_' + joint], colour] for joint, colour in [
+                    ('shoulder', (255, 0, 0)),
+                    ('hip', (0, 255, 0)),
+                    ('ankle', (0, 0, 255)),
+                ]]:
+                    if self.form_analyser.check_confidence(self.confidence_threshold, [left_joint, right_joint]):
+                        mid_point_x = int((left_joint.x + right_joint.x) * frame.shape[1] / 2)
+                        self.__draw_vertical_at_point(frame, mid_point_x, colour)
+
+                # TODO: form analysis...
 
             if show_output:
                 cv2.imshow('Video', frame)
                 cv2.waitKey(1)
+
             out.write(frame)
+
         cv2.destroyAllWindows()
         cap.release()
         out.release()
 
-        # Create final summary
-        final_summary = {'goodReps': 4, 'badReps': 3, 'mistakesMade': [{'rep': 1, 'mistakes': ['Poor Depth']}], 'finalComments': "This is from the non-live video processing script"}
+        # TODO: Create final summary (test data for now)
+        final_summary = {
+            'goodReps': 1,
+            'badReps': 3,
+            'mistakesMade': [
+                {'rep': 1, 'mistakes': []},
+                {'rep': 2, 'mistakes': ['Hips went out of alignment with feet', 'Shoulders went out of alignment with feet']},
+                {'rep': 3, 'mistakes': ['Hips went out of alignment with feet']},
+                {'rep': 4, 'mistakes': ['Hips went out of alignment with feet', 'Shoulders were not level', 'Shoulders went out of alignment with feet']},
+            ],
+            'stateSequences': [
+                {'durations': [1.066868543624878, 0.1766049861907959], 'states': ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
+                {'durations': [0.8746097087860107, 0.2374439239501953], 'states': ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
+                {'durations': [0.9108970165252686, 0.3012425899505615], 'states': ['STANDING', 'TRANSITION']},
+                {'durations': [1.1003923004023002, 0.2652425899505615], 'states': ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
+            ],
+            'finalComments': 'NOT IMPLEMENTED YET'
+        }
 
         return temp_video_file, final_summary
+
+    def __draw_vertical_at_point(self, frame, x_pos, colour):
+        cv2.line(frame, (x_pos, 0), (x_pos, frame.shape[0]), colour, thickness=3)
+
+    def __draw_angle_at_joint(self, frame, joint, joint_angle):
+        joint_pos = tuple(np.multiply([joint.x, joint.y], frame.shape[:2][::-1]).astype(int))
+        self.__draw_text(
+            frame,
+            f'{round(joint_angle)} deg',
+            to_centre=True,
+            pos=joint_pos
+        )
 
     def __draw_text(self, img, text,
         to_centre=False,

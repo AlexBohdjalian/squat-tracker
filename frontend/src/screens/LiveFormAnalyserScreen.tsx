@@ -34,7 +34,6 @@ type FormFeedback = {
 
 const ip = '192.168.0.28';
 const FEEDBACK_URL = `http://${ip}:5000/form-feedback`;
-const abortController = new AbortController();
 
 export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'LiveFormAnalyser'>) {
   const [streaming, setStreaming] = useState(false);
@@ -71,6 +70,24 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
     setSetStarted(false);
   }
 
+  function toCamelCase(str) {
+    return str.replace(/([-_][a-z])/g, (group) =>
+      group.toUpperCase().replace('-', '').replace('_', '')
+    );
+  }
+
+  function convertKeysToCamelCase(obj) {
+    if (Array.isArray(obj)) {
+      return obj.map((item) => convertKeysToCamelCase(item));
+    } else if (typeof obj === 'object' && obj !== null) {
+      return Object.keys(obj).reduce((accumulator, key) => {
+        accumulator[toCamelCase(key)] = convertKeysToCamelCase(obj[key]);
+        return accumulator;
+      }, {});
+    }
+    return obj;
+  }
+
   const handleEndSet = (summary: FinalSummary, videoUri: string) => {
     handleStreaming();
     initialiseStates();
@@ -81,9 +98,11 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
         // save video client side and then process in same way as non-live analysis (might not be doable)
       // if not available, use ''
 
+    
+
     navigation.navigate(
       'PostSetSummary',
-      { summary: summary, videoUri: videoUri }
+      { summary: convertKeysToCamelCase(summary), videoUri: videoUri }
       // {goodReps: 4, badReps: 3, mistakesMade: [{rep: 1, mistakes: ['Poor Depth']}, {rep: 3, mistakes: ['Shoulders Not Level', 'Hips Shifted To The Left']}, {rep: 7, mistakes: ['Hips Not Vertically Aligned With Feet']}], finalComments: "Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! Here are some final comments! "}
     )
   }
@@ -103,34 +122,24 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
     if (streaming) {  
       const fetchFormFeedback = async () => {
         try {
-          const response = await axios.get(FEEDBACK_URL, {
-            signal: abortController.signal,
-          });
+          const response = await axios.get(FEEDBACK_URL);
           if (response.data) {
             handleFormFeedback(response.data);
           }
         } catch {}
       };
       const intervalId = setInterval(fetchFormFeedback, 1000 / settings.framerate);
-
-      return () => {
-        clearInterval(intervalId);
-        abortController.abort();
-      };
     }
   }, [streaming]);
 
   const handleFormFeedback = (data: FormFeedback[]) => {
     data.forEach((feedback: FormFeedback) => {
       const tag = feedback.tag;
-
       let priority = -1;
       if (tag === 'SET_ENDED' && feedback.summary) {
         handleEndSet(feedback.summary, '');
-
-        return;
       } else {
-        const message = feedback.message;
+        let message = feedback.message;
         if (tag === 'SET_START_COUNTDOWN') {
           if (parseFloat(message) < 0.0) {
             setCountdownTimer('0');
@@ -140,24 +149,33 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
           return;
         } else if (tag === 'SET_STARTED') {
           setSetStarted(true);
-
-          return;
         } else if (tag === 'REP_DETECTED') {
           setRepCounter(prevRepCounter => prevRepCounter + 1);
-          return;
+          priority = 0;
+          if (message) {
+            message = 'GOOD REP DETECTED';
+          } else {
+            message = 'BAD REP DETECTED';
+          }
         } else if (tag === 'NOT_DETECTED') {
-          priority = 1
+          priority = 1;
         } else if (tag === 'FEEDBACK') {
-          priority = 2
+          priority = 2;
         } else if (tag === 'TIP') {
-          priority = 3
+          priority = 3;
         }
 
         if (priority !== -1 && (displayedFeedback.priority === -1 || priority < displayedFeedback.priority)) {
-          if (priority === 1 || priority === 2) {
-            setFeedbackType('CRITICAL')
+          if (priority === 0) {
+            if (message === 'GOOD REP DETECTED') {
+              setFeedbackType('GOOD');
+            } else {
+              setFeedbackType('CRITICAL');
+            }
+          } else if (priority === 1 || priority === 2) {
+            setFeedbackType('CRITICAL');
           } else if (priority === 3) {
-            setFeedbackType('TIP')
+            setFeedbackType('TIP');
           } else {
             setFeedbackType('NONE');
           }
@@ -208,7 +226,7 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
         })
         .catch((e: any) => {
           console.log('Stream failed!')
-          console.log(e)
+          console.warn(e)
           setStreaming(false);
         });
     }

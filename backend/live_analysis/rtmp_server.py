@@ -5,6 +5,7 @@ import time
 from threading import Thread
 
 import cv2
+import pandas as pd
 import squat_analyser as sa
 from flask import Flask, jsonify
 
@@ -41,6 +42,7 @@ ffmpeg_args = [
 form_analyser = sa.SquatFormAnalyser(use_advanced_criteria=True)
 port = 5000
 current_f = []
+final_feedback_waiting = False
 
 
 # Create feedback server
@@ -50,9 +52,10 @@ log.setLevel(logging.ERROR)
 
 @app.route('/form-feedback', methods=['GET'])
 def get_form_feedback():
-    global current_f
+    global current_f, final_feedback_waiting
     json_f = jsonify(current_f)
     current_f = []
+    final_feedback_waiting = False
     return json_f
 
 def run_flask_app():
@@ -70,7 +73,7 @@ proc1 = subprocess.Popen(
 )
 time.sleep(3) # Allow server to start before opening rtmp stream
 
-
+# NOTE: This allows for the script to wait for the client to connect indefinitely, but ffmpeg can be flakey so it is commented out
 # start_string = 'Input #0, flv, from '
 # print('Waiting for client to connect...')
 # while True:
@@ -84,6 +87,7 @@ print('Stream started!')
 
 show_stream = False
 show_feedback = True
+
 try:
     while True:
         # Process the frame
@@ -91,6 +95,7 @@ try:
         if not success:
             break
 
+        # Logging
         if show_feedback and immediate_f not in [[], current_f]:
             for f in immediate_f:
                 if f['tag'] in ['FEEDBACK']:
@@ -98,17 +103,30 @@ try:
                 elif f['tag'] == 'REP_DETECTED':
                     print('Rep detected')
                 elif f['tag'] == 'SET_ENDED':
-                    print(f'{YELLOW_BG} Final Summary: {f["summary"]}')
+                    print(f'{YELLOW_BG} Final Summary: {f["summary"]} {NORMAL}')
                 else:
                     print(f'{YELLOW_BG} {f["tag"]}: {f["message"]} {NORMAL}')
 
-        current_f = immediate_f
+        # Add any new feedback to current_f
+        if len(immediate_f) > 0:
+            if immediate_f[0]['tag'] != 'SET_ENDED':
+                df1 = pd.DataFrame(current_f)
+                df2 = pd.DataFrame(immediate_f)
+                df3 = pd.concat([df1, df2]).drop_duplicates().reset_index(drop=True)
+                current_f = df3.to_dict('records')
+            else:
+                current_f = immediate_f
+                final_feedback_waiting = True
+                break
 
 except KeyboardInterrupt:
     print('Exiting gracefully...')
 
-cv2.destroyAllWindows()
-cap.release()
-proc1.terminate()
+while True:
+    if not final_feedback_waiting:
+        cv2.destroyAllWindows()
+        cap.release()
+        proc1.terminate()
 
-print('Server successfully shutdown!')
+        print('Server successfully shutdown!')
+        break

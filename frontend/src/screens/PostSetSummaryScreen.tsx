@@ -64,16 +64,21 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
   }
 
   const calculateRPE = (reps: FinalSummary['stateSequences']) => {
-    const percent1RM = parseFloat(weightUsed) / parseFloat(input1RM);
+    // NOTE: This is an attempt that did not work
 
-    const firstRepConcentric = reps[0].durations[1];
-    const lastRepConcentric = reps[reps.length - 1].durations[1];
+  //   // NOTE: weightUsed and input1RM are retrived from user input from textboxes
+  //   const percent1RM = parseFloat(weightUsed) / parseFloat(input1RM);
 
-    const targetVelocity = lastRepConcentric / firstRepConcentric;
-    const RIR = Math.log(percent1RM) / Math.log(targetVelocity);
+  //   const firstRepConcentric = reps[0].durations[1];
+  //   const lastRepConcentric = reps[reps.length - 1].durations[1];
 
-    const RPE = 10 - RIR;
-    return roundNumber(RPE, 1);
+  //   const targetVelocity = lastRepConcentric / firstRepConcentric;
+  //   const RIR = Math.log(percent1RM) / Math.log(targetVelocity);
+
+  //   const RPE = 10 - RIR;
+  //   return roundNumber(RPE, 1);
+
+    return 'This feature does not currently work :(';
   }
 
   const roundNumber = (num: number, dp: number) => {
@@ -152,7 +157,7 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
                 <Button
                   title={'Try again'}
                   onPress={handleDoRpe}
-                  style={{ width: '40%', height: '22%', marginTop: 0 }}
+                  style={{ width: '40%', height: '26%', marginTop: 0 }}
                 />
               </View>
             ) : (

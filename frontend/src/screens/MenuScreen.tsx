@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -12,6 +12,8 @@ const UPLOAD_VIDEO_ENDPOINT = `http://${ip}:5000/upload_video`;
 
 export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
   const [galleyButtonDisabled, setGalleryButtonDisabled] = useState<boolean>(true);
+  const [videoIsProcessing, setVideoIsProcessing] = useState<boolean>(false);
+  const [errorOccurred, setErrorOccurred] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -35,6 +37,7 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
       });
 
       if (!result.canceled) {
+        setVideoIsProcessing(true);
         // Send video to backend for processing
         const base64VideoData = await FileSystem.readAsStringAsync(result.assets[0].uri, {
           encoding: FileSystem.EncodingType.Base64,
@@ -56,18 +59,27 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
           });
           const asset = await MediaLibrary.createAssetAsync(fileUri);
 
-          console.log(finalSummary);
+          console.log(finalSummary)
+
+          setVideoIsProcessing(false);
           navigation.navigate(
             'PostSetSummary',
             { summary: finalSummary, videoUri: asset.uri }
           );
         } else {
+          setErrorOccurred(true);
           console.warn('Response code ' + response.status);
         }
       }
     } catch (e) {
+      setErrorOccurred(true);
       console.warn(e);
     }
+  }
+
+  const clearError = () => {
+    setVideoIsProcessing(false);
+    setErrorOccurred(false);
   }
 
   // const testData: FinalSummary = {
@@ -82,39 +94,55 @@ export default function MenuScreen({ navigation }: RootTabScreenProps<'Menu'>) {
   //   stateSequences: [
   //     {durations: [1.066868543624878, 0.1766049861907959], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
   //     {durations: [0.8746097087860107, 0.2374439239501953], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
-  //     {durations: [0.9108970165252686, 0.3012425899505615], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
-  //     {durations: [0.7108970165252686, 0.2012425899505615], states: ['STANDING', 'TRANSITION']},
+  //     {durations: [0.9108970165252686, 0.3012425899505615], states: ['STANDING', 'TRANSITION']},
+  //     {durations: [1.1003923004023002, 0.2652425899505615], states: ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
   //   ],
   //   finalComments: 'NOT IMPLEMENTED YET'
   // }
 
   return (
-    <View style={{flex: 1}}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Choose an action</Text>
-        <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-        <View style={styles.buttonsContainer}>
-          <Button
-            onPress={() => navigation.navigate('LiveFormAnalyser')}
-            title="Go To Live Squat Tracker"
-          />
-          <Button
-            onPress={selectAndProcessVideo}
-            title="Select Video From Gallery"
-            disabled={galleyButtonDisabled}
-          />
-          {/* <Button
-            onPress={() => navigation.navigate(
-              'PostSetSummary',
-              {
-                summary: testData,
-                videoUri: ''
-              }
-            )}
-            title="Test post set summary"
-          /> */}
-        </View>
-      </View>
+    <View style={styles.container}>
+      {videoIsProcessing ? (
+        <>
+        {errorOccurred ? (
+          <>
+            <Text>An error occurred</Text>
+            <Button title={'Back to menu'} onPress={clearError()}/>
+          </>
+          ) : (
+          <>
+            <Text style={[styles.title, { marginBottom: 20 }]}>Video is processing</Text>
+            <ActivityIndicator size={'large'} />
+          </>
+        )}
+        </>
+      ) : (
+        <>
+          <Text style={styles.title}>Choose an action</Text>
+          <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
+          <View style={styles.buttonsContainer}>
+            <Button
+              onPress={() => navigation.navigate('LiveFormAnalyser')}
+              title="Go To Live Squat Tracker"
+            />
+            <Button
+              onPress={selectAndProcessVideo}
+              title="Select Video From Gallery"
+              disabled={galleyButtonDisabled}
+            />
+            {/* <Button
+              onPress={() => navigation.navigate(
+                'PostSetSummary',
+                {
+                  summary: testData,
+                  videoUri: ''
+                }
+              )}
+              title="Test post set summary"
+            /> */}
+          </View>
+        </>
+      )}
     </View>
   );
 }

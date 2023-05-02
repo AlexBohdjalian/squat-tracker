@@ -8,7 +8,7 @@ class MediaPipe_To_Form_Interpreter():
         confidence_threshold=0.5,
     ):
         self.min_confidence_threshold = confidence_threshold
-        self.main_joints = ['foot_index', 'ankle', 'knee', 'hip', 'shoulder']
+        self.main_joints = ['foot_index', 'ankle', 'knee', 'hip', 'shoulder', 'elbow']
         self.landmark_names = {
             'nose': 0,
             'left_eye_inner': 1,
@@ -52,7 +52,7 @@ class MediaPipe_To_Form_Interpreter():
         self.most_visible_side = []
         self.orientation = []
 
-    def __calc_3D_angle(self, joint1, joint2, joint3):
+    def calc_3D_angle(self, joint1, joint2, joint3):
         # Create vectors from joint2 to joint1 and joint2 to joint3
         vector1 = np.array([joint1.x - joint2.x, joint1.y - joint2.y, joint1.z - joint2.z])
         vector2 = np.array([joint3.x - joint2.x, joint3.y - joint2.y, joint3.z - joint2.z])
@@ -79,22 +79,14 @@ class MediaPipe_To_Form_Interpreter():
             for joint_name in self.landmark_names.keys()
         }
 
-    def get_most_visible_side(self, left_joints, right_joints, set_begun):
-        if set_begun:
-            if isinstance(self.most_visible_side, type([])):
-                self.most_visible_side, _ = Counter(self.most_visible_side).most_common(1)[0]
-        else:
-            left_visibility = sum([joint.visibility for joint in left_joints])
-            right_visibility = sum([joint.visibility for joint in right_joints])
+    def get_most_visible_side(self, joints_dict):
+        left_visibility = sum([joints_dict['left_' + joint].visibility for joint in self.main_joints])
+        right_visibility = sum([joints_dict['right_' + joint].visibility for joint in self.main_joints])
 
-            if right_visibility < left_visibility:
-                self.most_visible_side.append('left_')
-            else:
-                self.most_visible_side.append('right_')
+        if right_visibility < left_visibility:
+            return 'left_'
 
-            return self.most_visible_side[-1]
-
-        return self.most_visible_side
+        return 'right_'
 
     def get_orientation(self, left_shoulder, right_shoulder, left_hip, right_hip, threshold):
         """
@@ -121,8 +113,8 @@ class MediaPipe_To_Form_Interpreter():
 
     def get_main_joint_angles(self, joints):
         return [
-            round(self.__calc_3D_angle(joints['ankle'], joints['knee'], joints['hip']), 1),
-            round(self.__calc_3D_angle(joints['knee'], joints['hip'], joints['shoulder']), 1)
+            round(self.calc_3D_angle(joints['ankle'], joints['knee'], joints['hip']), 1),
+            round(self.calc_3D_angle(joints['knee'], joints['hip'], joints['shoulder']), 1)
         ]
 
     def joints_in_starting_position(
@@ -143,5 +135,8 @@ class MediaPipe_To_Form_Interpreter():
         joint2_mid = abs(right_joint2.x + abs(right_joint2.x - left_joint2.x) / 2)
         return abs(joint1_mid - joint2_mid) <= threshold
 
-    def check_spine_is_neutral(self, hip, shoulder, nose, threshold):
-        return abs(self.__calc_3D_angle(hip, shoulder, nose) - 180) <= threshold
+    def check_spine_is_neutral(self, hip, shoulder, neck, threshold):
+        return abs(self.calc_3D_angle(hip, shoulder, neck) - 180) <= threshold
+
+    def check_knees_go_over_toes(self, ankle, knee, hip):
+        return (hip.x < ankle.x < knee.x) or (knee.x < ankle.x < hip.x)

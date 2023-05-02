@@ -37,24 +37,26 @@ class SquatFormAnalyser():
             'shoulder_level': 0.05,
             'knee_level': 0.05,
             'hip_level': 0.05,
+
+            'spine_neutral': 100,  # TODO: tune this
         }
         # TODO: need to tune these values to beginner standards
         self.form_thresholds_beginner = {
-            'STANDING_knee_angle_range': (62, 180),  # TODO: tune this
-            'TRANSITION_knee_angle_range': (28, 55),  # TODO: tune this
-            'BOTTOM_knee_angle_range': (0, 26),  # TODO: tune this
+            'STANDING_knee_angle_range': (62, 180),  # TODO: do this
+            'TRANSITION_knee_angle_range': (28, 55),  # TODO: do this
+            'BOTTOM_knee_angle_range': (0, 26),  # TODO: do this
 
-            'safe_hip_angle': 62,  # TODO: tune thus
+            'safe_hip_angle': 62,  # TODO: do this
 
-            'hip_vertically_aligned': 0,  # TODO: tune this
-            'shoulder_vertically_aligned': 0,  # TODO: tune this
+            'hip_vertically_aligned': 0.04,  # TODO: do this
+            'shoulder_vertically_aligned': 0.075,  # TODO: do this
         }
         self.form_thresholds_advanced = {
             'STANDING_knee_angle_range': (62, 180),
             'TRANSITION_knee_angle_range': (28, 55),
             'BOTTOM_knee_angle_range': (0, 26),
 
-            'safe_hip_angle': 62,  # TODO: tune
+            'safe_hip_angle': 62,
 
             'hip_vertically_aligned': 0.04,
             'shoulder_vertically_aligned': 0.075,
@@ -80,7 +82,7 @@ class SquatFormAnalyser():
         self.final_summary = {
             'good_reps': 0,
             'bad_reps': 0,
-            'mistakes_made': [{'rep': 1, 'mistakes': []}], # {rep: int, mistakes: string[]}
+            'mistakes_made': [{'rep': 1, 'mistakes': []}],
             'state_sequences': [],
             'final_comments': '',
         }
@@ -131,8 +133,6 @@ class SquatFormAnalyser():
                     self.__initialise_state()
                     self.form_analyser.initialise_state()
         else:
-            self.no_landmarks_count = 0
-
             # Get dictionary of joints for ease of use
             joints_dict = self.form_analyser.get_joints_dict(pose_landmarks)
 
@@ -158,6 +158,10 @@ class SquatFormAnalyser():
                             joints_dict,
                             most_visible_joints_dict
                         )
+
+                        # TODO: test this fixes jittery No Detection not ending set
+                        if feedback:
+                            self.no_landmarks_count = 0
                 else:
                     self.no_confident_detection_count += 1
                     if self.no_confident_detection_count >= self.no_detection_count_threshold:
@@ -237,7 +241,7 @@ class SquatFormAnalyser():
 
         ##### Determine state_sequence based on angles #####
         final_feedback = []
-        if self.state_sequence != [STANDING] and self.form_thresholds['STANDING_knee_angle_range'][0] <= knee_angle <= self.form_thresholds['STANDING_knee_angle_range'][1]:
+        if self.state_sequence[-1] != STANDING and self.form_thresholds['STANDING_knee_angle_range'][0] <= knee_angle <= self.form_thresholds['STANDING_knee_angle_range'][1]:
             if self.state_sequence[-1] == TRANSITION:
                 self.squat_end_time = time.time()
             elif self.state_sequence[-1] == BOTTOM:
@@ -246,12 +250,15 @@ class SquatFormAnalyser():
 
             # TODO: change this to be standing_to_bottom_time, bottom_time, bottom_to_standing_time
 
-            final_feedback.append({'tag': 'REP_DETECTED', 'message': ''})
+            final_feedback.append({'tag': 'REP_DETECTED', 'message': self.current_rep_good})
 
             self.squat_duration = self.squat_end_time - self.squat_start_time
             s_to_m = self.squat_mid_time - self.squat_start_time
             m_to_e = self.squat_end_time - self.squat_mid_time
-            self.final_summary['state_sequences'].append(((s_to_m, m_to_e), self.state_sequence))
+            self.final_summary['state_sequences'].append({
+                'durations': (s_to_m, m_to_e),
+                'states': self.state_sequence,
+            })
 
             self.final_summary['good_reps'] += int(self.current_rep_good)
             self.final_summary['bad_reps'] += int(not self.current_rep_good)
@@ -280,8 +287,8 @@ class SquatFormAnalyser():
             self.state_sequence.count(TRANSITION) == 1:
             final_feedback.append({'tag': 'TIP', 'message': 'Lower Hips'})
 
-        if self.state_sequence[-1] == BOTTOM and \
-            not self.form_analyser.check_joints_are_level(
+        if self.state_sequence[-1] == BOTTOM:
+            if orientation == 'front_on' and not self.form_analyser.check_joints_are_level(
                 joints_dict['left_knee'],
                 joints_dict['right_knee'],
                 self.general_thresholds['knee_level']
@@ -290,7 +297,9 @@ class SquatFormAnalyser():
                 self.current_rep_good = False
                 self.__add_final_summary_feedback('Knees were not level')
 
-        # TODO: check this and move 35 (constant) into form_thresholds
+            final_feedback.append({'tag': 'TIP', 'message': 'Keep your knees over your toes'})
+
+        # TODO: check this and move 35 (constant) into thresholds
         if self.state_sequence[-1] == TRANSITION and knee_angle < 35 and self.form_thresholds['safe_hip_angle'] < hip_angle:
             final_feedback.append({'tag': 'FEEDBACK', 'message': f'COLLAPSED TORSO!\nKeep your spine neutral'})
             self.current_rep_good = False
@@ -343,10 +352,15 @@ class SquatFormAnalyser():
                 self.current_rep_good = False
                 self.__add_final_summary_feedback('Shoulders went out of alignment with feet')
         elif orientation == 'side_on':
-            # TODO: this
-                # TODO: spine should be neutral,
-                # TODO: knees should go over toes,
-            pass
+            if not self.form_analyser.check_spine_is_neutral(
+                most_visible_joints_dict['hip'],
+                most_visible_joints_dict['shoulder'],
+                joints_dict['nose'],
+                self.general_thresholds['spine_neutral']
+            ):
+                final_feedback.append({'tag': 'FEEDBACK', 'message': 'Maintain a neutral spine'})
+                self.current_rep_good = False
+                self.__add_final_summary_feedback('A neutral spine was not maintained')
 
         return final_feedback
 
