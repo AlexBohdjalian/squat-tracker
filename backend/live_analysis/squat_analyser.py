@@ -75,7 +75,6 @@ class SquatFormAnalyser():
         self.no_detection_count_threshold = 30
         self.no_landmarks_count = 0
         self.no_landmarks_count_threshold = 30
-        self.squat_duration = 0
         self.squat_start_time = 0
         self.squat_mid_time = 0
         self.squat_end_time = 0
@@ -98,7 +97,6 @@ class SquatFormAnalyser():
         self.set_ended_counter = 0
         self.no_confident_detection_count = 0
         self.no_landmarks_count = 0
-        self.squat_duration = 0
         self.squat_start_time = 0
         self.squat_mid_time = 0
         self.squat_end_time = 0
@@ -252,9 +250,9 @@ class SquatFormAnalyser():
 
             final_feedback.append({'tag': 'REP_DETECTED', 'message': self.current_rep_good})
 
-            self.squat_duration = self.squat_end_time - self.squat_start_time
-            s_to_m = self.squat_mid_time - self.squat_start_time
-            m_to_e = self.squat_end_time - self.squat_mid_time
+            s_to_m = self.squat_mid_time - self.squat_start_time if self.squat_mid_time >= self.squat_start_time else 0
+            m_to_e = self.squat_end_time - self.squat_mid_time if self.squat_end_time >= self.squat_mid_time else 0
+
             self.final_summary['state_sequences'].append({
                 'durations': (s_to_m, m_to_e),
                 'states': self.state_sequence,
@@ -304,11 +302,6 @@ class SquatFormAnalyser():
             final_feedback.append({'tag': 'FEEDBACK', 'message': f'COLLAPSED TORSO!\nKeep your spine neutral'})
             self.current_rep_good = False
             self.__add_final_summary_feedback('Torso was collapsed')
-
-        # TODO: make this more robust if set stage measurement fails
-        if self.squat_end_time < self.squat_start_time:
-            self.squat_duration = round(time.time() - self.squat_start_time, 2)
-
 
         ##### Determine feedback specific to user camera orientation #####
         if orientation == 'face_on':
