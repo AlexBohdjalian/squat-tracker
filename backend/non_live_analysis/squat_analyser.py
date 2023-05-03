@@ -75,7 +75,6 @@ class SquatFormAnalyser():
                 left_ankle, right_ankle = joints_dict['left_ankle'], joints_dict['right_ankle']
                 if self.form_analyser.check_confidence(self.confidence_threshold, [left_ankle, right_ankle]):
                     ankle_mid_point_x = (left_ankle.x + right_ankle.x) / 2
-                    print(ankle_mid_point_x * frame.shape[1])
                     self.__draw_vertical_at_point(frame, int(ankle_mid_point_x * frame.shape[1]), (255, 0, 0))
 
                     for left_joint, right_joint, threshold in [[joints_dict['left_' + j], joints_dict['right_' + j], th] for j, th in [
@@ -91,7 +90,8 @@ class SquatFormAnalyser():
 
             if show_output:
                 cv2.imshow('Video', frame)
-                cv2.waitKey(1)
+                if cv2.waitKey(1) == ord('q'):
+                    break
 
             out.write(frame)
 

@@ -97,11 +97,6 @@ class MediaPipe_To_Form_Interpreter():
         return self.most_visible_side
 
     def get_orientation(self, left_shoulder, right_shoulder, left_hip, right_hip, threshold):
-        """
-        Determines the orientation of the user based on shoulder and hip depth.
-
-        After 50 measurements an average is taken of the observations to improve performance.
-        """
         if isinstance(self.orientation, type([])):
             shoulder_depth_difference = abs(left_shoulder.z - right_shoulder.z)
             hip_depth_difference = abs(left_hip.z - right_hip.z)
@@ -136,6 +131,7 @@ class MediaPipe_To_Form_Interpreter():
             hip_angle_range[0] <= hip_vertical_angle <= hip_angle_range[1]
 
     def check_joints_are_level(self, joint1, joint2, threshold):
+        print(round(abs(joint1.y - joint2.y), 3), '   ', threshold)
         return abs(joint1.y - joint2.y) <= threshold
 
     def check_joints_are_vertically_aligned(self, left_joint1, right_joint1, left_joint2, right_joint2, threshold):

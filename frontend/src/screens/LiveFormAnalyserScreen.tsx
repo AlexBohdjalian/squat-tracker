@@ -98,8 +98,6 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
         // save video client side and then process in same way as non-live analysis (might not be doable)
       // if not available, use ''
 
-    
-
     navigation.navigate(
       'PostSetSummary',
       { summary: convertKeysToCamelCase(summary), videoUri: videoUri }
@@ -128,7 +126,7 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
           }
         } catch {}
       };
-      const intervalId = setInterval(fetchFormFeedback, 1000 / settings.framerate);
+      setInterval(fetchFormFeedback, 1000 / settings.framerate);
     }
   }, [streaming]);
 

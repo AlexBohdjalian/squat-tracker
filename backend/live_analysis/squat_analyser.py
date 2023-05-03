@@ -38,7 +38,7 @@ class SquatFormAnalyser():
             'knee_level': 0.05,
             'hip_level': 0.05,
 
-            'spine_neutral': 100,  # TODO: tune this
+            'spine_neutral': 80,  # TODO: tune this
         }
         # TODO: need to tune these values to beginner standards
         self.form_thresholds_beginner = {
@@ -286,7 +286,9 @@ class SquatFormAnalyser():
             final_feedback.append({'tag': 'TIP', 'message': 'Lower Hips'})
 
         if self.state_sequence[-1] == BOTTOM:
-            if orientation == 'front_on' and not self.form_analyser.check_joints_are_level(
+            final_feedback.append({'tag': 'TIP', 'message': 'Keep your knees over your toes'})
+
+            if orientation == 'face_on' and not self.form_analyser.check_joints_are_level(
                 joints_dict['left_knee'],
                 joints_dict['right_knee'],
                 self.general_thresholds['knee_level']
@@ -295,11 +297,9 @@ class SquatFormAnalyser():
                 self.current_rep_good = False
                 self.__add_final_summary_feedback('Knees were not level')
 
-            final_feedback.append({'tag': 'TIP', 'message': 'Keep your knees over your toes'})
-
         # TODO: check this and move 35 (constant) into thresholds
         if self.state_sequence[-1] == TRANSITION and knee_angle < 35 and self.form_thresholds['safe_hip_angle'] < hip_angle:
-            final_feedback.append({'tag': 'FEEDBACK', 'message': f'COLLAPSED TORSO!\nKeep your spine neutral'})
+            final_feedback.append({'tag': 'FEEDBACK', 'message': f'COLLAPSED TORSO!\nLean back slightly'})
             self.current_rep_good = False
             self.__add_final_summary_feedback('Torso was collapsed')
 
