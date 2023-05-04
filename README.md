@@ -11,9 +11,11 @@ Visual output with pose landmarks and feedback text
 
 ### Steps
 Clone the repository:
+
     git clone https://github.com/AlexBohdjalian/squat-tracker.git
 
 Build frontend packages:
+
     cd squat-tracker
     cd frontend
     yarn
