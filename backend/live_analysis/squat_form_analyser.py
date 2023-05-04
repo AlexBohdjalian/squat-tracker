@@ -131,7 +131,6 @@ class MediaPipe_To_Form_Interpreter():
             hip_angle_range[0] <= hip_vertical_angle <= hip_angle_range[1]
 
     def check_joints_are_level(self, joint1, joint2, threshold):
-        print(round(abs(joint1.y - joint2.y), 3), '   ', threshold)
         return abs(joint1.y - joint2.y) <= threshold
 
     def check_joints_are_vertically_aligned(self, left_joint1, right_joint1, left_joint2, right_joint2, threshold):

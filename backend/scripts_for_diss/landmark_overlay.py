@@ -23,3 +23,14 @@ mp.solutions.drawing_utils.draw_landmarks(
     landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
 )
 cv2.imwrite('./assets/processed/bad_landmark_overlay.png', image)
+
+image = cv2.imread('./assets/side_on_plates_obscuring.jpg')
+classifier = MediaPipeDetector(model_complexity=0)
+landmarks = classifier.make_prediction(image)
+mp.solutions.drawing_utils.draw_landmarks(
+    image,
+    landmarks,
+    mp.solutions.pose.POSE_CONNECTIONS,
+    landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
+)
+cv2.imwrite('./assets/processed/side_on_plates_obscuring.jpg', image)
