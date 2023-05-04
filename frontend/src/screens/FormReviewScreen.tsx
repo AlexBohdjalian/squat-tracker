@@ -6,6 +6,9 @@ import { RootTabScreenProps } from '../../types';
 import Button from '../components/Button';
 
 export default function FormReviewScreen({ route, navigation }: RootTabScreenProps<'FormReview'>) {
+  /**
+   * This Screen is deprecated.
+   */
   const [savedVideoUri, setSavedVideoUri] = useState<string>('');
   const [squatFormData, setSquatFormData] = useState<{'reps': []}>();
   const [showVideo, setShowVideo] = useState<boolean>(false);
