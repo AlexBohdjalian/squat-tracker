@@ -14,7 +14,7 @@ __pycache__/
 *.py[cod]
 *_processed.mp4
 frontend_ejected/
-.vscode/*
+.vscode/
 backend/assets/
 frontend_archived/
 backend_archived/
