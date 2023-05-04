@@ -101,21 +101,11 @@ class SquatFormAnalyser():
 
         # TODO: Create final summary (test data for now)
         final_summary = {
-            'goodReps': 1,
-            'badReps': 3,
-            'mistakesMade': [
-                {'rep': 1, 'mistakes': []},
-                {'rep': 2, 'mistakes': ['Hips went out of alignment with feet', 'Shoulders went out of alignment with feet']},
-                {'rep': 3, 'mistakes': ['Hips went out of alignment with feet']},
-                {'rep': 4, 'mistakes': ['Hips went out of alignment with feet', 'Shoulders were not level', 'Shoulders went out of alignment with feet']},
-            ],
-            'stateSequences': [
-                {'durations': [1.066868543624878, 0.1766049861907959], 'states': ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
-                {'durations': [0.8746097087860107, 0.2374439239501953], 'states': ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
-                {'durations': [0.9108970165252686, 0.3012425899505615], 'states': ['STANDING', 'TRANSITION']},
-                {'durations': [1.1003923004023002, 0.2652425899505615], 'states': ['STANDING', 'TRANSITION', 'BOTTOM', 'TRANSITION']},
-            ],
-            'finalComments': 'NOT IMPLEMENTED YET'
+            'goodReps': 0,
+            'badReps': 0,
+            'mistakesMade': [],
+            'stateSequences': [],
+            'finalComments': 'NOT IMPLEMENTED'
         }
 
         return temp_video_file, final_summary

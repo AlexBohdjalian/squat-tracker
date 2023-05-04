@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, ScrollView, LogBox, TextInput } from 'react-native';
-import { Video } from 'expo-av';
+import { ResizeMode, Video } from 'expo-av';
 import { Table, Row, Rows } from 'react-native-table-component';
 import { Text, View } from '../components/Themed';
 import { FinalSummary, RootStackParamList, RootStackScreenProps } from '../../types';
@@ -90,6 +90,7 @@ export default function PostSetSummaryScreen({ navigation, route }: IProps) {
     <View style={styles.container}>
       {displayVideo ? (
         <Video
+          resizeMode={ResizeMode.COVER}
           source={{ uri: videoUri }}
           style={{ width: '100%', height: '91%' }}
           rate={1.0}
