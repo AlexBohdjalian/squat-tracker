@@ -40,6 +40,7 @@ class SquatFormAnalyser():
             # Get landmarks
             pose_landmarks = self.pose_estimator.make_prediction(frame)
 
+            message_to_display = []
             if pose_landmarks is not None:
                 # Draw landmarks
                 self.mp_draw.draw_landmarks(
@@ -48,8 +49,6 @@ class SquatFormAnalyser():
                     mp.solutions.pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=self.mp_drawing_spec
                 )
-
-                message_to_display = []
 
                 # Get joint dictionaries
                 joints_dict = self.form_analyser.get_joints_dict(pose_landmarks)
@@ -92,14 +91,14 @@ class SquatFormAnalyser():
                                 colour = (0, 255, 0)
                             else:
                                 colour = (0, 0, 255)
-                                message_to_display.append(f'{joint_name.capitalize()} is not vertically aligned')
+                                message_to_display.append(f'{joint_name.capitalize()}s are not vertically aligned')
 
                             self.__draw_vertical_at_point(frame, np.multiply(mid_point, frame.shape[:2][::-1]).astype(int), colour)
 
                 # Draw levelness indicators if not level
                 left_shoulder, right_shoulder = joints_dict['left_shoulder'], joints_dict['right_shoulder']
                 if self.form_analyser.check_confidence(self.confidence_threshold, [left_shoulder, right_shoulder]):
-                    joints_are_level = self.form_analyser.check_joints_are_level(left_joint, right_joint, self.threshold['shoulders_level'])
+                    joints_are_level = self.form_analyser.check_joints_are_level(left_shoulder, right_shoulder, self.threshold['shoulders_level'])
                     if joints_are_level:
                         colour = (0, 255, 0)
                     else:
@@ -111,6 +110,8 @@ class SquatFormAnalyser():
 
 
                 # TODO: form analysis...
+            else:
+                message_to_display.append('User not detected')
 
             for i, msg in enumerate(message_to_display):
                 self.__draw_text(frame, str(msg), pos=(0, (i+1)*35))

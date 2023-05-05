@@ -21,7 +21,6 @@ import { FinalSummary, RootStackScreenProps } from '../../types';
 export interface ISettingsState {
   resolution: Resolution;
   framerate: number;
-  videoBitrate: number;
   rtmpEndpoint: string;
   streamKey: string;
 }
@@ -53,7 +52,6 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
   const settings: ISettingsState = {
     resolution: '720p',
     framerate: 10,
-    videoBitrate: 1400,
     rtmpEndpoint: `rtmp://${ip}:1935/form_analyser`,
     streamKey: '22022001',
   };
@@ -244,7 +242,6 @@ export default function LiveFormAnalyser({ navigation }: RootStackScreenProps<'L
         ref={ref}
         camera={camera}
         video={{
-          bitrate: settings.videoBitrate * 1000,
           fps: settings.framerate,
           resolution: settings.resolution,
         }}
