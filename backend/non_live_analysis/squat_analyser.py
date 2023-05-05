@@ -8,11 +8,14 @@ import mediapipe as mp
 class SquatFormAnalyser():
     def __init__(self, model_complexity, confidence_threshold=0.5):
         self.confidence_threshold = confidence_threshold
+        self.mp_draw = mp.solutions.drawing_utils
+        self.mp_drawing_spec = mp.solutions.drawing_styles.get_default_pose_landmarks_style()
         self.pose_estimator = MediaPipeDetector(model_complexity=model_complexity)
         self.form_analyser = MediaPipe_To_Form_Interpreter(confidence_threshold=confidence_threshold)
         self.threshold = {
             'hips_vertically_aligned': 0.05,
             'shoulders_vertically_aligned': 0.05,
+            'shoulders_level': 0.05
         }
 
     def analyse(self, video_path, show_output=False):
@@ -39,12 +42,14 @@ class SquatFormAnalyser():
 
             if pose_landmarks is not None:
                 # Draw landmarks
-                mp.solutions.drawing_utils.draw_landmarks(
+                self.mp_draw.draw_landmarks(
                     frame,
                     pose_landmarks,
                     mp.solutions.pose.POSE_CONNECTIONS,
-                    landmark_drawing_spec=mp.solutions.drawing_styles.get_default_pose_landmarks_style()
+                    landmark_drawing_spec=self.mp_drawing_spec
                 )
+
+                message_to_display = []
 
                 # Get joint dictionaries
                 joints_dict = self.form_analyser.get_joints_dict(pose_landmarks)
@@ -71,22 +76,44 @@ class SquatFormAnalyser():
                     if joint_angle is not None:
                         self.__draw_angle_at_joint(frame, joint, joint_angle)
 
-                # Draw line verticals
+                # Draw vertical alignment indicators if out of alignment
                 left_ankle, right_ankle = joints_dict['left_ankle'], joints_dict['right_ankle']
                 if self.form_analyser.check_confidence(self.confidence_threshold, [left_ankle, right_ankle]):
-                    ankle_mid_point_x = (left_ankle.x + right_ankle.x) / 2
-                    self.__draw_vertical_at_point(frame, int(ankle_mid_point_x * frame.shape[1]), (255, 0, 0))
+                    ankle_mid_point = ((left_ankle.x + right_ankle.x) / 2, (left_ankle.y + right_ankle.y) / 2)
+                    self.__draw_vertical_at_point(frame, np.multiply(ankle_mid_point, frame.shape[:2][::-1]).astype(int), (255, 0, 0))
 
-                    for left_joint, right_joint, threshold in [[joints_dict['left_' + j], joints_dict['right_' + j], th] for j, th in [
+                    for left_joint, right_joint, threshold, joint_name in [[joints_dict['left_' + j], joints_dict['right_' + j], th, j] for j, th in [
                         ('shoulder', self.threshold['shoulders_vertically_aligned']),
                         ('hip', self.threshold['hips_vertically_aligned'])
                     ]]:
                         if self.form_analyser.check_confidence(self.confidence_threshold, [left_joint, right_joint]):
-                            mid_point_x = (left_joint.x + right_joint.x) / 2
-                            colour = (0, 255, 0) if abs(ankle_mid_point_x - mid_point_x) < threshold else (0, 0, 255)
-                            self.__draw_vertical_at_point(frame, int(mid_point_x * frame.shape[1]), colour)
+                            mid_point = ((left_joint.x + right_joint.x) / 2, (left_joint.y + right_joint.y) / 2)
+                            if abs(ankle_mid_point[0] - mid_point[0]) < threshold:
+                                colour = (0, 255, 0)
+                            else:
+                                colour = (0, 0, 255)
+                                message_to_display.append(f'{joint_name.capitalize()} is not vertically aligned')
+
+                            self.__draw_vertical_at_point(frame, np.multiply(mid_point, frame.shape[:2][::-1]).astype(int), colour)
+
+                # Draw levelness indicators if not level
+                left_shoulder, right_shoulder = joints_dict['left_shoulder'], joints_dict['right_shoulder']
+                if self.form_analyser.check_confidence(self.confidence_threshold, [left_shoulder, right_shoulder]):
+                    joints_are_level = self.form_analyser.check_joints_are_level(left_joint, right_joint, self.threshold['shoulders_level'])
+                    if joints_are_level:
+                        colour = (0, 255, 0)
+                    else:
+                        colour = (0, 0, 255)
+                        message_to_display.append('Shoulders are not level')
+
+                    colour = (0, 255, 0) if joints_are_level else (0, 0, 255)
+                    self.__draw_levelness_line_at_points(frame, left_shoulder, right_shoulder, colour)
+
 
                 # TODO: form analysis...
+
+            for i, msg in enumerate(message_to_display):
+                self.__draw_text(frame, str(msg), pos=(0, (i+1)*35))
 
             if show_output:
                 cv2.imshow('Video', frame)
@@ -116,17 +143,25 @@ class SquatFormAnalyser():
 
         return None
 
-    def __draw_vertical_at_point(self, frame, x_pos, colour):
-        cv2.line(frame, (x_pos, 0), (x_pos, frame.shape[0]), colour, thickness=3)
+    def __draw_levelness_line_at_points(self, frame, left_shoulder, right_shoulder, colour):
+        p1 = self.__get_image_coords_from_joint(frame.shape, left_shoulder)
+        p2 = self.__get_image_coords_from_joint(frame.shape, right_shoulder)
+        cv2.line(frame, p1, p2, colour, thickness=3)
+
+    def __draw_vertical_at_point(self, frame, pos, colour):
+        cv2.line(frame, (pos[0], 0), (pos[0], pos[1]), colour, thickness=3)
 
     def __draw_angle_at_joint(self, frame, joint, joint_angle):
-        joint_pos = tuple(np.multiply([joint.x, joint.y], frame.shape[:2][::-1]).astype(int))
+        joint_pos = self.__get_image_coords_from_joint(frame.shape, joint)
         self.__draw_text(
             frame,
             f'{round(joint_angle)} deg',
             to_centre=True,
             pos=joint_pos
         )
+
+    def __get_image_coords_from_joint(self, frame_shape, joint):
+        return tuple(np.multiply([joint.x, joint.y], frame_shape[:2][::-1]).astype(int))
 
     def __draw_text(self, img, text,
         to_centre=False,
