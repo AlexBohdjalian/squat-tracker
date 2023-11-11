@@ -14,10 +14,9 @@ Clone the repository:
 
     git clone https://github.com/AlexBohdjalian/squat-tracker.git
 
-Build frontend packages:
+Build front-end packages:
 
-    cd squat-tracker
-    cd frontend
+    cd squat-tracker/frontend
     yarn
 
 ## Usage
